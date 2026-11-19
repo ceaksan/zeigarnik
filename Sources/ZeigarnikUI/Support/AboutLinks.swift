@@ -2,9 +2,8 @@ import SwiftUI
 
 enum AboutLinks {
     static let livingArchitecture = URL(string: "https://lab.ceaksan.com/architecture/")!
-    /// Shown once the page is live.
-    static let labPage = URL(string: "https://lab.ceaksan.com/zeigarnik")!
-    static let labPageLive = false
+    static let labPage = URL(string: "https://lab.ceaksan.com/zeigarnik/")!
+    static let labPageLive = true
     static let website = URL(string: "https://ceaksan.com")!
     static let x = URL(string: "https://x.com/ceaksan")!
     static let linkedIn = URL(string: "https://www.linkedin.com/in/ceaksan/")!
