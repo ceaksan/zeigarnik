@@ -8,12 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		2BAE19BB0006AD15FBBF7F17 /* ZeigarnikApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B9C5A2CBB9AFE7F6BF38537 /* ZeigarnikApp.swift */; };
+		94E71DCE25C4A6279E4ED122 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D0D6F5C1D853684A47BE15FD /* Assets.xcassets */; };
 		B353D96BB77003CB73F5A539 /* ZeigarnikUI in Frameworks */ = {isa = PBXBuildFile; productRef = 47AC37B9F8BE872E1FD08CD9 /* ZeigarnikUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1C32D5625AF15E93D1449054 /* Zeigarnik.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zeigarnik.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B9C5A2CBB9AFE7F6BF38537 /* ZeigarnikApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZeigarnikApp.swift; sourceTree = "<group>"; };
+		D0D6F5C1D853684A47BE15FD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FDF7001150967CD949B1CD9A /* zeigarnik */ = {isa = PBXFileReference; lastKnownFileType = folder; name = zeigarnik; path = .; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -32,6 +34,7 @@
 		62BF50F7BF8DB7A22332E53D /* App */ = {
 			isa = PBXGroup;
 			children = (
+				D0D6F5C1D853684A47BE15FD /* Assets.xcassets */,
 				3B9C5A2CBB9AFE7F6BF38537 /* ZeigarnikApp.swift */,
 			);
 			path = App;
@@ -70,6 +73,7 @@
 			buildConfigurationList = EFE1672107DE8F45157D59C0 /* Build configuration list for PBXNativeTarget "Zeigarnik" */;
 			buildPhases = (
 				E7D66E10F1A4C1B42AF3FF5E /* Sources */,
+				FA08923EC82B1CABBCD55126 /* Resources */,
 				823E99140289F25E0F33F69E /* Frameworks */,
 			);
 			buildRules = (
@@ -116,6 +120,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		FA08923EC82B1CABBCD55126 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				94E71DCE25C4A6279E4ED122 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		E7D66E10F1A4C1B42AF3FF5E /* Sources */ = {
@@ -182,7 +197,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -195,7 +210,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.2;
+				MARKETING_VERSION = 0.1.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -240,7 +255,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -259,7 +274,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.2;
+				MARKETING_VERSION = 0.1.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
