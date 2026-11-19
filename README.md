@@ -15,13 +15,23 @@ Named after the Zeigarnik effect: unfinished tasks are remembered better than fi
 - **Menubar extra**: today's attention items and quick actions.
 - **Open in**: Finder, your terminal or editor, and herdr when installed.
 
-## Requirements
+## Install
 
-- macOS 14 or later
-- Xcode 16 or later (Swift 6)
-- [xcodegen](https://github.com/yonaskolb/XcodeGen) to regenerate the project after adding or removing files
+Download `Zeigarnik-<version>-macos.zip` from [Releases](https://github.com/ceaksan/zeigarnik/releases/latest), unzip it and move `Zeigarnik.app` to `/Applications`. It needs macOS 14 or later, runs on Apple Silicon and Intel, and carries the `zeigarnik` command-line tool inside.
 
-## Build and run
+The app is signed but not notarized, so macOS blocks the first launch. Open it once, then choose Open Anyway in System Settings > Privacy & Security. Or clear the download flag before opening it:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Zeigarnik.app
+```
+
+On first launch a welcome window asks for the folders that hold your repositories. Zeigarnik reads only git repositories inside the folders you choose.
+
+macOS asks for access to your Documents folder, to iCloud Drive if your folders or vault live there, and to Calendars when you turn on scheduling. Each feature degrades visibly when access is denied. Every release is signed with the same certificate, so macOS keeps these answers across updates.
+
+## Build from source
+
+Requirements: macOS 14 or later, Xcode 16 or later (Swift 6), and [xcodegen](https://github.com/yonaskolb/XcodeGen) to regenerate the project after adding or removing files.
 
 ```bash
 git clone https://github.com/ceaksan/zeigarnik.git
@@ -36,9 +46,9 @@ xcodebuild -project Zeigarnik.xcodeproj -scheme Zeigarnik -configuration Release
 open build/Build/Products/Release/Zeigarnik.app
 ```
 
-On first launch a welcome window asks for the folders that hold your repositories. Zeigarnik reads only git repositories inside the folders you choose.
+If you sign the build with your own development certificate, macOS remembers its permission answers across rebuilds; an unsigned or ad-hoc signed build asks again after each rebuild.
 
-macOS asks for access to your Documents folder, to iCloud Drive if your folders or vault live there, and to Calendars when you turn on scheduling. Each feature degrades visibly when access is denied. If you sign the build with your own development certificate, macOS remembers these answers across rebuilds; an unsigned or ad-hoc signed build asks again after each rebuild.
+`scripts/release.sh` builds the release zip: a universal app with the command-line tool in `Contents/Helpers`, signed with the identity in `ZEIGARNIK_SIGN_IDENTITY` (default `Zeigarnik Release`, a self-signed code-signing certificate).
 
 ## Tests
 
@@ -80,7 +90,13 @@ swift run zeigarnik-scan --root ~/Projects --vault ~/Vault --json
 
 ## Notes from the command line and from agents
 
-`zeigarnik` reads and writes the app's notes in the same database. Install it once:
+`zeigarnik` reads and writes the app's notes in the same database. The app ships it; put it on your PATH once:
+
+```bash
+ln -s /Applications/Zeigarnik.app/Contents/Helpers/zeigarnik ~/.local/bin/zeigarnik
+```
+
+Built from source instead:
 
 ```bash
 swift build -c release --product zeigarnik

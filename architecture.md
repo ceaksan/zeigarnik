@@ -31,7 +31,7 @@ Last verified: 2026-11-19
 | Testing | Swift Testing | `@Test`, `#expect`; `ZeigarnikCoreTests`, `ZeigarnikKitTests` |
 | Storage | SQLite (WAL) | `~/Library/Application Support/Zeigarnik/zeigarnik.sqlite`, shared by app and CLI |
 | Settings | UserDefaults | `zeigarnik.settings` (JSON); table column layout in `projectTableColumns` |
-| Distribution | Source only | Build with Xcode; not sandboxed, not notarized |
+| Distribution | GitHub Releases zip | `scripts/release.sh`: universal, signed with one self-signed `Zeigarnik Release` certificate, not notarized, not sandboxed; CLI in `Contents/Helpers` (ADR-007) |
 
 ## Module Map
 
