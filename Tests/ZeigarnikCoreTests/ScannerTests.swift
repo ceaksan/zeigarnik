@@ -238,6 +238,17 @@ struct ScannerTests {
         #expect(report.errors.contains { $0.message.contains(".codex/sessions") })
     }
 
+    /// Finder leaves .DS_Store files in folders it has shown; they are not dated session folders.
+    @Test func finderFilesInCodexSessionFoldersAreNotErrors() async throws {
+        let world = try await makeWorld()
+        let sessions = world.base.appendingPathComponent(".codex/sessions")
+        for folder in ["", "2026", "2026/11", "2026/11/18"] {
+            try Data("synthetic".utf8).write(to: sessions.appendingPathComponent(folder).appendingPathComponent(".DS_Store"))
+        }
+        let report = await world.scanner().scan(fetch: false)
+        #expect(!report.errors.contains { $0.message.contains(".DS_Store") || ($0.projectPath ?? "").contains(".DS_Store") })
+    }
+
     @Test func movedRepoKeepsIdentityAcrossScans() async throws {
         let world = try await makeWorld()
         _ = await world.scanner().scan(fetch: false)

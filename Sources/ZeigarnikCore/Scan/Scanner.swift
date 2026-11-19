@@ -423,10 +423,14 @@ public actor ProjectScanner {
 
     private func ingestCodex(_ errors: inout [ScanError]) {
         let sessionsRoot = config.codexHome.appendingPathComponent("sessions")
-        if let years = listDirectory(sessionsRoot, &errors) {
-            for year in years {
-                for month in listDirectory(year, &errors) ?? [] {
-                    for day in listDirectory(month, &errors) ?? [] {
+        // Only dated folders: Finder leaves .DS_Store files next to them.
+        func folders(_ url: URL) -> [URL] {
+            (listDirectory(url, &errors) ?? []).filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+        }
+        if FileManager.default.fileExists(atPath: sessionsRoot.path) {
+            for year in folders(sessionsRoot) {
+                for month in folders(year) {
+                    for day in folders(month) {
                         for file in listDirectory(day, &errors) ?? [] where file.lastPathComponent.hasPrefix("rollout-") && file.pathExtension == "jsonl" {
                             ingestRollout(file, &errors)
                         }

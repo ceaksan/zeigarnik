@@ -90,7 +90,7 @@ public struct RootView: View {
                 .help(report.relinks.map { "\($0.fromPath) → \($0.toPath)" }.joined(separator: "\n"))
         }
         if let report = environment.coordinator.lastReport, !report.errors.isEmpty {
-            Banner("Errors in last scan (\(report.errors.count)): " + report.errors.prefix(3).map { $0.projectPath.map { "\(($0 as NSString).lastPathComponent): " } ?? "" }.joined(), tone: .warn)
+            Banner("Errors in last scan (\(report.errors.count)): " + report.errors.prefix(2).map { error in (error.projectPath.map { ($0 as NSString).lastPathComponent + ": " } ?? "") + error.message }.joined(separator: "; "), tone: .warn)
                 .help(report.errors.map { ($0.projectPath ?? "") + " " + $0.message }.joined(separator: "\n"))
         }
     }
