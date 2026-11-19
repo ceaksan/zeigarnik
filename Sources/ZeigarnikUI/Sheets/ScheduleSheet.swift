@@ -98,25 +98,83 @@ struct ScheduleSheet: View {
     }
 }
 
-/// A note card with a context-menu delete that asks inline; no system dialog.
-struct DeletableNoteCard: View {
+/// A note card with edit and delete under the text. Both work inline (no system dialog); the context menu offers the same.
+/// ⌘↩ and Esc are read from the focused editor, not as button shortcuts, so they do not clash with "Add Note".
+struct EditableNoteCard: View {
     let date: String
     let text: String
+    let onSave: (String) throws -> Void
     let onDelete: () -> Void
+    @State private var editing = false
     @State private var confirming = false
+    @State private var draft = ""
+    @State private var error: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            NoteCard(date: date, text: text, scheduled: false)
-            if confirming {
+            if editing {
+                NoteInput(text: $draft, placeholder: "Note", submit: save)
+                    .onKeyPress(keys: [.return]) { press in
+                        guard press.modifiers.contains(.command) else { return .ignored }
+                        save()
+                        return .handled
+                    }
+                    .onKeyPress(.escape) { cancel(); return .handled }
                 HStack {
-                    Text("Delete this note?").font(Theme.small)
-                    Button("Delete", role: .destructive, action: onDelete)
-                    Button("Cancel") { confirming = false }
+                    Text("⌘↩ saves, Esc cancels").font(Theme.small).foregroundStyle(Theme.muted)
+                    Spacer()
+                    Button("Cancel", action: cancel)
+                    Button("Save", action: save).buttonStyle(.borderedProminent)
                 }
                 .controlSize(.small)
+                if let error { Text(error).font(Theme.small).foregroundStyle(Theme.warn) }
+            } else {
+                NoteCard(date: date, text: text, scheduled: false)
+                if confirming {
+                    HStack {
+                        Text("Delete this note?").font(Theme.small)
+                        Spacer()
+                        Button("Cancel") { confirming = false }
+                        Button("Delete", role: .destructive, action: onDelete)
+                    }
+                    .controlSize(.small)
+                } else {
+                    HStack(spacing: 12) {
+                        Spacer()
+                        Button(action: edit) { Image(systemName: "pencil") }.help("Edit note")
+                        Button { confirming = true } label: { Image(systemName: "trash") }.help("Delete note")
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(Theme.muted)
+                    .font(Theme.small)
+                }
             }
         }
-        .contextMenu { Button("Delete", role: .destructive) { confirming = true } }
+        .contextMenu {
+            Button("Edit", action: edit)
+            Button("Delete", role: .destructive) { confirming = true }
+        }
+    }
+
+    private func edit() {
+        draft = text
+        error = nil
+        confirming = false
+        editing = true
+    }
+
+    private func cancel() {
+        editing = false
+        error = nil
+    }
+
+    private func save() {
+        do {
+            try onSave(draft)
+            editing = false
+            error = nil
+        } catch {
+            self.error = "Could not save: \(error)"
+        }
     }
 }

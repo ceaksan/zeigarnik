@@ -51,7 +51,7 @@ public struct CalendarOp: Sendable, Equatable {
 }
 
 public enum OwnerDataError: Error, Equatable {
-    case emptyText, unknownProject
+    case emptyText, unknownProject, unknownNote
 }
 
 extension Store {
@@ -67,6 +67,19 @@ extension Store {
                            arguments: [note.id.uuidString, projectId, day, trimmed, now.timeIntervalSince1970])
         }
         return note
+    }
+
+    /// Changes only the text; the note keeps its day, project and creation time.
+    public func updateNote(id: UUID, text: String) throws -> Note {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw OwnerDataError.emptyText }
+        return try dbQueue.write { db in
+            try db.execute(sql: "UPDATE note SET text = ? WHERE id = ?", arguments: [trimmed, id.uuidString])
+            guard db.changesCount > 0,
+                  let note = try Row.fetchOne(db, sql: "SELECT * FROM note WHERE id = ?", arguments: [id.uuidString]).flatMap(Self.note)
+            else { throw OwnerDataError.unknownNote }
+            return note
+        }
     }
 
     public func deleteNote(id: UUID) throws {

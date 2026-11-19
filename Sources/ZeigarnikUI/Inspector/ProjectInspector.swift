@@ -158,7 +158,8 @@ struct ProjectInspector: View {
                     .onTapGesture { onSchedule(ScheduleDraft(id: item.id, projectId: item.projectId, title: item.title, start: item.start, duration: item.duration, addToCalendar: item.wantsCalendar)) }
             }
             ForEach(detail.notes) { note in
-                DeletableNoteCard(date: UIFormat.dayMonth(note.day, model.calendar), text: note.text) { model.deleteNote(id: note.id) }
+                EditableNoteCard(date: UIFormat.dayMonth(note.day, model.calendar), text: note.text,
+                                 onSave: { try model.updateNote(id: note.id, text: $0) }, onDelete: { model.deleteNote(id: note.id) })
             }
             if detail.items.isEmpty && detail.notes.isEmpty {
                 Text("No notes yet.").foregroundStyle(Theme.muted).frame(maxWidth: .infinity, alignment: .leading)

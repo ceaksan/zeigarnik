@@ -43,7 +43,8 @@ struct DayInspector: View {
                     SectionHeader("Notes")
                     VStack(spacing: 6) {
                         ForEach(detail.notes) { note in
-                            DeletableNoteCard(date: "✎ \(model.displayName(note.projectId))", text: note.text) { model.deleteNote(id: note.id) }
+                            EditableNoteCard(date: "✎ \(model.displayName(note.projectId))", text: note.text,
+                                             onSave: { try model.updateNote(id: note.id, text: $0) }, onDelete: { model.deleteNote(id: note.id) })
                         }
                     }
                 }

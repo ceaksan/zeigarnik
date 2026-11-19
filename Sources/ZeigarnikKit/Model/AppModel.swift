@@ -256,6 +256,12 @@ public final class AppModel {
         revision += 1
     }
 
+    public func updateNote(id: UUID, text: String) throws {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ModelError.emptyText }
+        _ = try store.updateNote(id: id, text: text)
+        revision += 1
+    }
+
     public func deleteNote(id: UUID) {
         _ = writeOwnerData("delete the note") { try store.deleteNote(id: id) }
         revision += 1

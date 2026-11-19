@@ -38,6 +38,21 @@ import Testing
         #expect(try store.notes(projectId: project).map(\.text) == ["iki"])
     }
 
+    @Test func noteTextCanBeEditedAndKeepsItsDay() throws {
+        let note = try store.addNote(projectId: project, day: "2026-11-12", text: "first draft", now: now)
+        let edited = try store.updateNote(id: note.id, text: "  second draft  ")
+        #expect(edited.text == "second draft")
+        #expect(edited.day == "2026-11-12")
+        #expect(try store.notes(projectId: project).map(\.text) == ["second draft"])
+    }
+
+    @Test func editingRejectsEmptyTextAndUnknownNotes() throws {
+        let note = try store.addNote(projectId: project, day: "2026-11-12", text: "keep", now: now)
+        #expect(throws: OwnerDataError.emptyText) { try store.updateNote(id: note.id, text: " \n") }
+        #expect(throws: OwnerDataError.unknownNote) { try store.updateNote(id: UUID(), text: "x") }
+        #expect(try store.notes(projectId: project).map(\.text) == ["keep"])
+    }
+
     @Test func notesSurviveProjectGoingMissing() throws {
         _ = try store.addNote(projectId: project, day: "2026-11-12", text: "kalsın", now: now)
         try store.saveScheduledItem(item())
