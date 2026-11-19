@@ -1,0 +1,81 @@
+# Zeigarnik
+
+Zeigarnik is a macOS app that shows, day by day, what is going on across your git repositories: when you last worked on each one with Claude Code, Codex or a commit, what is uncommitted or unpushed, whether the README or architecture document has fallen behind the code, how far each spec or plan really got, roughly how much time each project took, and whether the repository is public or private. You can pin projects, write notes against a project or a day, and schedule follow-ups that also land in macOS Calendar.
+
+Named after the Zeigarnik effect: unfinished tasks are remembered better than finished ones.
+
+## Features
+
+- **Project list** with last activity (agent or commit), last commit, dirty files, push state, README drift, visibility, estimated total time and spec progress. Columns can be hidden or shown from the header's context menu.
+- **Sidebar filters**: pinned, open now, uncommitted, push or upstream problems, README or architecture behind, public, quiet for 30+ days, folders, missing.
+- **Calendar view**: a month grid of activity, notes and scheduled items per day.
+- **Project and day inspectors**: facts, 14-day activity, spec tasks with evidence, notes and schedules.
+- **Menubar extra**: today's attention items and quick actions.
+- **Open in**: Finder, your terminal or editor, and herdr when installed.
+
+## Requirements
+
+- macOS 14 or later
+- Xcode 16 or later (Swift 6)
+- [xcodegen](https://github.com/yonaskolb/XcodeGen) to regenerate the project after adding or removing files
+
+## Build and run
+
+```bash
+git clone https://github.com/ceaksan/zeigarnik.git
+cd zeigarnik
+open Zeigarnik.xcodeproj   # choose the Zeigarnik scheme, then Run
+```
+
+Or from the command line:
+
+```bash
+xcodebuild -project Zeigarnik.xcodeproj -scheme Zeigarnik -configuration Release -derivedDataPath build build
+open build/Build/Products/Release/Zeigarnik.app
+```
+
+On first launch a welcome window asks for the folders that hold your repositories. Zeigarnik reads only git repositories inside the folders you choose.
+
+macOS asks for access to your Documents folder, to iCloud Drive if your folders or vault live there, and to Calendars when you turn on scheduling. Each feature degrades visibly when access is denied. If you sign the build with your own development certificate, macOS remembers these answers across rebuilds; an unsigned or ad-hoc signed build asks again after each rebuild.
+
+## Tests
+
+```bash
+swift test
+```
+
+The scanner, store, parsers and app logic live in Swift packages (`ZeigarnikCore`, `ZeigarnikKit`) and are tested without building the app. See `architecture.md` for the module map.
+
+## Optional integrations
+
+None of these are required; Zeigarnik uses what it finds.
+
+- **Claude Code and Codex**: activity and time come from `~/.claude` and `~/.codex`. If you do not use one of them, nothing is shown for it.
+- **Project table**: a Markdown table in `CLAUDE.md` at the top of your first folder can name projects and point to directories outside your folders.
+- **Numbered folders**: subfolders named like `01_Core`, `02_Products` become sidebar folder groups.
+- **Specs and plans**: design specs and implementation plans (for example under `docs/superpowers/` or OpenSpec) are read for task progress, with evidence from paths and commits.
+- **Obsidian vault**: point Settings at a vault to show open Active Tasks counts per project.
+- **herdr**: with `hc` installed, projects open in a herdr pane are marked live and can be opened in herdr.
+- **gh**: with the GitHub CLI installed and signed in, repository visibility also works for your private repositories.
+
+## Privacy
+
+- Everything stays on your Mac, in `~/Library/Application Support/Zeigarnik/`.
+- From agent logs only the agent, session id, timestamp, working directory and source are stored, never prompt or message text.
+- Credentials in remote URLs are stripped before anything is stored.
+- Network access: `git fetch`, and, while the visibility check is on, one question per repository to GitHub or GitLab (through `gh` when installed): once a day after a clear answer, and again on each scan while the answer is unknown, for example after a rate limit. No telemetry. Turn the visibility check off in Settings > Checks.
+
+## Command-line scanner
+
+The same scanner runs without the app and writes to the same database:
+
+```bash
+swift run zeigarnik-scan --root ~/Projects --no-fetch
+swift run zeigarnik-scan --root ~/Projects --vault ~/Vault --json
+```
+
+`--root` is required and may be repeated. `--db` points at another database file.
+
+## License
+
+MIT, see `LICENSE`.

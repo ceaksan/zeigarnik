@@ -1,0 +1,4 @@
+{"_case":"header","id":"s-legacy","timestamp":"2025-09-03T10:39:35.000Z","instructions":"Synthetic instructions.","git":{"repository_url":"https://user:fake-token@gitlab.example.com/x.git","branch":"main","commit_hash":"synthetic-commit"}}
+{"_case":"state","record_type":"state"}
+{"_case":"environment-context","type":"message","id":"legacy-environment","role":"user","content":[{"type":"input_text","text":"<environment_context>\n  <cwd>/Users/example/Desktop/site-v4.0</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>"}]}
+{"_case":"plain","type":"message","id":"legacy-input","role":"user","content":[{"type":"input_text","text":"Inspect the synthetic sample."}]}

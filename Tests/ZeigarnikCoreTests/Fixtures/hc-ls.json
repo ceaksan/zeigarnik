@@ -1,0 +1,14 @@
+{
+  "hidden_finished": 2,
+  "machines": [
+    {"name": "studio", "state": "connected"}
+  ],
+  "terminals": [
+    {"address": "t4h", "agent": "claude-code", "cwd": "/synthetic/projects/alpha/src", "state": "live", "status": "working", "turn": 1, "where": "alpha / 1"},
+    {"address": "t50", "agent": "claude-code", "cwd": "/synthetic/projects/alpha", "state": "live", "status": "idle", "turn": 2, "where": "alpha / 2"},
+    {"address": "t51", "agent": "codex", "cwd": "/synthetic/home/Desktop/beta", "state": "live", "status": "working", "turn": 3, "where": "beta / 1"},
+    {"address": "t60", "agent": "zsh", "cwd": "/synthetic/home/shell-session", "state": "live", "turn": 0, "where": "shell / 1"},
+    {"address": "t61", "cwd": "/synthetic/home/unassigned", "state": "live", "turn": 0, "where": "shell / 2"},
+    {"address": "studio/t1b", "agent": "codex", "cwd": "/synthetic/remote/project", "state": "live", "status": "working", "turn": 4, "where": "remote / 1"}
+  ]
+}

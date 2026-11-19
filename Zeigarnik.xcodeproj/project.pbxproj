@@ -1,0 +1,331 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2BAE19BB0006AD15FBBF7F17 /* ZeigarnikApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B9C5A2CBB9AFE7F6BF38537 /* ZeigarnikApp.swift */; };
+		B353D96BB77003CB73F5A539 /* ZeigarnikUI in Frameworks */ = {isa = PBXBuildFile; productRef = 47AC37B9F8BE872E1FD08CD9 /* ZeigarnikUI */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		1C32D5625AF15E93D1449054 /* Zeigarnik.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zeigarnik.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3B9C5A2CBB9AFE7F6BF38537 /* ZeigarnikApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZeigarnikApp.swift; sourceTree = "<group>"; };
+		FDF7001150967CD949B1CD9A /* zeigarnik */ = {isa = PBXFileReference; lastKnownFileType = folder; name = zeigarnik; path = .; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		823E99140289F25E0F33F69E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B353D96BB77003CB73F5A539 /* ZeigarnikUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		62BF50F7BF8DB7A22332E53D /* App */ = {
+			isa = PBXGroup;
+			children = (
+				3B9C5A2CBB9AFE7F6BF38537 /* ZeigarnikApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		712B59831E6BB1DE4B2FAE91 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1C32D5625AF15E93D1449054 /* Zeigarnik.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AD6A3A2F1A50A7E1FC9766AD /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				FDF7001150967CD949B1CD9A /* zeigarnik */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		B703CAB96E4821CC9DDF5367 = {
+			isa = PBXGroup;
+			children = (
+				62BF50F7BF8DB7A22332E53D /* App */,
+				AD6A3A2F1A50A7E1FC9766AD /* Packages */,
+				712B59831E6BB1DE4B2FAE91 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		94EE4172FCBBF04474571652 /* Zeigarnik */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EFE1672107DE8F45157D59C0 /* Build configuration list for PBXNativeTarget "Zeigarnik" */;
+			buildPhases = (
+				E7D66E10F1A4C1B42AF3FF5E /* Sources */,
+				823E99140289F25E0F33F69E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Zeigarnik;
+			packageProductDependencies = (
+				47AC37B9F8BE872E1FD08CD9 /* ZeigarnikUI */,
+			);
+			productName = Zeigarnik;
+			productReference = 1C32D5625AF15E93D1449054 /* Zeigarnik.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		021A6054FA2DF7D4FFE908E7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = AE8707778D2616CA3BBABE88 /* Build configuration list for PBXProject "Zeigarnik" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = B703CAB96E4821CC9DDF5367;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				77FC940FFFD9585A71DDAE1F /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 712B59831E6BB1DE4B2FAE91 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				94EE4172FCBBF04474571652 /* Zeigarnik */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E7D66E10F1A4C1B42AF3FF5E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2BAE19BB0006AD15FBBF7F17 /* ZeigarnikApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		013AAF3D56A26609DA31CCB4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zeigarnik adds the times you schedule to macOS Calendar and reads back changes you make there.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Zeigarnik reads the git repositories in the folders you choose.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ceaksan.zeigarnik;
+				PRODUCT_NAME = Zeigarnik;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		160F0D35E7FD4F26859E9C47 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		1E5AD3959411EA600DE28D28 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		66213AFCE77EF094EB35B130 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zeigarnik adds the times you schedule to macOS Calendar and reads back changes you make there.";
+				INFOPLIST_KEY_NSDocumentsFolderUsageDescription = "Zeigarnik reads the git repositories in the folders you choose.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ceaksan.zeigarnik;
+				PRODUCT_NAME = Zeigarnik;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AE8707778D2616CA3BBABE88 /* Build configuration list for PBXProject "Zeigarnik" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1E5AD3959411EA600DE28D28 /* Debug */,
+				160F0D35E7FD4F26859E9C47 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EFE1672107DE8F45157D59C0 /* Build configuration list for PBXNativeTarget "Zeigarnik" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				013AAF3D56A26609DA31CCB4 /* Debug */,
+				66213AFCE77EF094EB35B130 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		77FC940FFFD9585A71DDAE1F /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		47AC37B9F8BE872E1FD08CD9 /* ZeigarnikUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ZeigarnikUI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 021A6054FA2DF7D4FFE908E7 /* Project object */;
+}

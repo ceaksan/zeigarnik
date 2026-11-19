@@ -1,0 +1,10 @@
+.build/
+.swiftpm/
+*.xcodeproj/xcuserdata/
+.superpowers/brainstorm/
+.DS_Store
+build/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Design specs and plans stay local; they are not part of the public repository.
+docs/superpowers/

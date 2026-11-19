@@ -1,0 +1,43 @@
+name: Zeigarnik
+options:
+  deploymentTarget:
+    macOS: "14.0"
+  bundleIdPrefix: com.ceaksan
+  xcodeVersion: "16.0"
+  defaultConfig: Debug
+
+packages:
+  Zeigarnik:
+    path: .
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  Zeigarnik:
+    type: application
+    platform: macOS
+    sources:
+      - App
+    dependencies:
+      - package: Zeigarnik
+        product: ZeigarnikUI
+    settings:
+      base:
+        PRODUCT_NAME: Zeigarnik
+        PRODUCT_BUNDLE_IDENTIFIER: com.ceaksan.zeigarnik
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: "Zeigarnik adds the times you schedule to macOS Calendar and reads back changes you make there."
+        INFOPLIST_KEY_NSDocumentsFolderUsageDescription: "Zeigarnik reads the git repositories in the folders you choose."
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+
+schemes:
+  Zeigarnik:
+    build:
+      targets:
+        Zeigarnik: all
+    run:
+      config: Debug
