@@ -70,6 +70,13 @@ extension Store {
         migrator.registerMigration("v6-project-table") { db in
             try db.execute(sql: "ALTER TABLE project ADD COLUMN projectTablePath TEXT")
         }
+        migrator.registerMigration("v7-note-draft") { db in
+            try db.execute(sql: """
+                CREATE TABLE noteDraftDismissal (
+                  projectId TEXT NOT NULL REFERENCES project(id) ON DELETE CASCADE, kind TEXT NOT NULL,
+                  fingerprint TEXT NOT NULL, dismissedAt REAL NOT NULL, PRIMARY KEY (projectId, kind))
+                """)
+        }
         return migrator
     }
 }

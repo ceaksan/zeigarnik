@@ -61,12 +61,14 @@ extension Store {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw OwnerDataError.emptyText }
         let note = Note(id: UUID(), projectId: projectId, day: day, text: trimmed, createdAt: now)
-        try dbQueue.write { db in
-            try Self.requireProject(db, projectId)
-            try db.execute(sql: "INSERT INTO note (id, projectId, day, text, createdAt) VALUES (?, ?, ?, ?, ?)",
-                           arguments: [note.id.uuidString, projectId, day, trimmed, now.timeIntervalSince1970])
-        }
+        try dbQueue.write { db in try Self.insert(db, note) }
         return note
+    }
+
+    static func insert(_ db: Database, _ note: Note) throws {
+        try requireProject(db, note.projectId)
+        try db.execute(sql: "INSERT INTO note (id, projectId, day, text, createdAt) VALUES (?, ?, ?, ?, ?)",
+                       arguments: [note.id.uuidString, note.projectId, note.day, note.text, note.createdAt.timeIntervalSince1970])
     }
 
     /// Changes only the text; the note keeps its day, project and creation time.
@@ -286,7 +288,7 @@ extension Store {
         _ = isNew
     }
 
-    private static func note(_ row: Row) -> Note? {
+    static func note(_ row: Row) -> Note? {
         guard let id = UUID(uuidString: row["id"]) else { return nil }
         return Note(id: id, projectId: row["projectId"], day: row["day"], text: row["text"],
                     createdAt: Date(timeIntervalSince1970: row["createdAt"]))

@@ -9,7 +9,9 @@ Named after the Zeigarnik effect: unfinished tasks are remembered better than fi
 - **Project list** with last activity (agent or commit), last commit, dirty files, push state, README drift, visibility, estimated total time and spec progress. Columns can be hidden or shown from the header's context menu.
 - **Sidebar filters**: pinned, open now, uncommitted, push or upstream problems, README or architecture behind, public, quiet for 30+ days, folders, missing.
 - **Calendar view**: a month grid of activity, notes and scheduled items per day.
-- **Project and day inspectors**: facts, 14-day activity, spec tasks with evidence, notes and schedules.
+- **Project and day inspectors**: facts, 14-day activity, spec tasks with evidence, notes and schedules. Notes can be edited or deleted from the icons under each note.
+- **Note drafts**: a README or architecture document behind, unpushed commits or uncommitted changes show up as a draft above the project's notes. Accept opens it in the editor and adds it as today's note; dismiss hides it until that state changes.
+- **Notes for agents**: the `zeigarnik` command and its MCP server let Claude Code, Codex or another agent list, read, add and edit your notes. Agents cannot delete notes.
 - **Menubar extra**: today's attention items and quick actions.
 - **Open in**: Finder, your terminal or editor, and herdr when installed.
 
@@ -75,6 +77,35 @@ swift run zeigarnik-scan --root ~/Projects --vault ~/Vault --json
 ```
 
 `--root` is required and may be repeated. `--db` points at another database file.
+
+## Notes from the command line and from agents
+
+`zeigarnik` reads and writes the app's notes in the same database. Install it once:
+
+```bash
+swift build -c release --product zeigarnik
+cp .build/release/zeigarnik ~/.local/bin/
+```
+
+```bash
+zeigarnik projects                          # projects with push state, uncommitted files, README, notes, drafts
+zeigarnik status <project>                  # one project: state, recent notes, open drafts
+zeigarnik notes list --project <project> --since 2026-11-01
+zeigarnik notes add --project <project> "Release after the review"
+zeigarnik notes edit <id> "New text"        # <id>: a note id or a unique prefix of 4+ characters
+zeigarnik notes delete <id>
+zeigarnik drafts
+```
+
+A project is named by its id, display name or path. Every read command takes `--json`.
+
+`zeigarnik mcp` runs an MCP server on standard input and output with the tools `list_projects`, `project_status`, `list_notes`, `get_note`, `add_note`, `update_note` and `list_note_drafts`. There is no delete tool. To add it to Claude Code:
+
+```bash
+claude mcp add zeigarnik -- ~/.local/bin/zeigarnik mcp
+```
+
+The app notices changes made this way within two seconds.
 
 ## License
 

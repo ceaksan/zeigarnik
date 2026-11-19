@@ -25,13 +25,16 @@ public struct ScheduleDraft: Sendable, Equatable {
 }
 
 public struct ProjectDetail: Sendable, Equatable {
-    public init(notes: [Note] = [], items: [ScheduledItem] = [], specs: [SpecSummary] = []) {
+    public init(notes: [Note] = [], items: [ScheduledItem] = [], specs: [SpecSummary] = [], drafts: [NoteDraft] = []) {
         self.notes = notes
         self.items = items
         self.specs = specs
+        self.drafts = drafts
     }
 
     public var notes: [Note] = []
+    /// Drafts from the project's state that the owner has not accepted or dismissed (ADR-006).
+    public var drafts: [NoteDraft] = []
     public var items: [ScheduledItem] = []
     public var specs: [SpecSummary] = []
 }
@@ -89,6 +92,7 @@ public final class AppModel {
     @ObservationIgnored private let home: URL
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private var reloadGeneration = 0
+    @ObservationIgnored private var lastDataVersion: Int?
     public var gap: TimeInterval { settings.activityGap }
 
     public init(store: Store, settings: AppSettings, coordinator: ScanCoordinator?, calendarSync: CalendarSync?,
@@ -181,10 +185,16 @@ public final class AppModel {
 
     public func projectDetail(_ id: String) async -> ProjectDetail {
         let store = self.store
+        let candidates = row(id).map { noteDrafts(for: $0, checks: draftChecks) } ?? []
+        let loaded: Set<String> = row(id) == nil ? [] : [id]
         return await readOwnerData(ProjectDetail()) {
             ProjectDetail(notes: try store.notes(projectId: id), items: try store.scheduledItems(projectId: id),
-                          specs: try store.specSummaries(projectId: id))
+                          specs: try store.specSummaries(projectId: id), drafts: try store.openNoteDrafts(candidates, projectIds: loaded))
         }
+    }
+
+    private var draftChecks: NoteDraftChecks {
+        NoteDraftChecks(readme: settings.checkReadme, architecture: settings.checkArchitecture)
     }
 
     public func dayDetail(_ day: String) async -> DayDetail {
@@ -260,6 +270,34 @@ public final class AppModel {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ModelError.emptyText }
         _ = try store.updateNote(id: id, text: text)
         revision += 1
+    }
+
+    /// Saves the owner's (possibly edited) text as today's note and dismisses the draft.
+    public func acceptDraft(_ draft: NoteDraft, text: String) throws {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ModelError.emptyText }
+        _ = try store.acceptNoteDraft(draft, text: text, day: today, now: now())
+        revision += 1
+    }
+
+    public func dismissDraft(_ draft: NoteDraft) {
+        _ = writeOwnerData("dismiss the draft") { try store.dismissNoteDraft(draft, now: now()) }
+        revision += 1
+    }
+
+    /// True when another connection (the command-line tool, an agent, `zeigarnik-scan`) committed since the last check;
+    /// rows and open details are then reloaded. The first call only records the starting point.
+    public func checkExternalChanges() async -> Bool {
+        let store = self.store
+        guard let version = await Task.detached(operation: { try? store.dataVersion() }).value else { return false }
+        guard let last = lastDataVersion else {
+            lastDataVersion = version
+            return false
+        }
+        guard version != last else { return false }
+        lastDataVersion = version
+        await reload()
+        revision += 1
+        return true
     }
 
     public func deleteNote(id: UUID) {

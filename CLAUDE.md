@@ -8,6 +8,8 @@
 ## Commands
 - Test: `swift test` (filter: `swift test --filter <Suite>`)
 - CLI: `swift run zeigarnik-scan --root <folder> --no-fetch` (`--root` is required, repeatable; `--vault`, `--db`, `--json`)
+- Notes CLI and MCP: `swift run zeigarnik --db <copy> notes list` (`projects`, `status`, `notes list|show|add|edit|delete`, `drafts`, `mcp`). Try it on a copy of a database, never on the owner's.
+- Release: bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in project.yml and `zeigarnikVersion` in `Sources/ZeigarnikAgent/AgentService.swift` together.
 - App: `xcodegen generate` after adding or removing files, then `xcodebuild -project Zeigarnik.xcodeproj -scheme Zeigarnik -configuration Release -derivedDataPath build build`
 - Debug app on a separate data set (screenshots, trials): build Debug with its own `PRODUCT_BUNDLE_IDENTIFIER`, launch with `--home <absolute dir>` (database, `.claude`, `.codex` come from there) and `--settings-json '<AppSettings JSON>'` for roots.
 - Builds run one at a time and only with the owner's approval.

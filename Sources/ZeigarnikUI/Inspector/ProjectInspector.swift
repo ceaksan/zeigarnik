@@ -153,6 +153,10 @@ struct ProjectInspector: View {
     @ViewBuilder private var notesSection: some View {
         SectionHeader("Notes and Schedules")
         VStack(spacing: 6) {
+            ForEach(detail.drafts, id: \.kind) { draft in
+                DraftNoteCard(text: draft.text, onAccept: { try model.acceptDraft(draft, text: $0) }, onDismiss: { model.dismissDraft(draft) })
+                    .id("\(draft.kind.rawValue)-\(draft.fingerprint)")
+            }
             ForEach(detail.items) { item in
                 NoteCard(date: UIFormat.dayMonthTime(item.start, model.calendar), text: item.title, scheduled: true, badge: UIFormat.syncBadge(item))
                     .onTapGesture { onSchedule(ScheduleDraft(id: item.id, projectId: item.projectId, title: item.title, start: item.start, duration: item.duration, addToCalendar: item.wantsCalendar)) }
@@ -161,7 +165,7 @@ struct ProjectInspector: View {
                 EditableNoteCard(date: UIFormat.dayMonth(note.day, model.calendar), text: note.text,
                                  onSave: { try model.updateNote(id: note.id, text: $0) }, onDelete: { model.deleteNote(id: note.id) })
             }
-            if detail.items.isEmpty && detail.notes.isEmpty {
+            if detail.items.isEmpty && detail.notes.isEmpty && detail.drafts.isEmpty {
                 Text("No notes yet.").foregroundStyle(Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
             }
         }

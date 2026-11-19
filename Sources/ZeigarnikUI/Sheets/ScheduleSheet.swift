@@ -47,13 +47,15 @@ struct ScheduleSheet: View {
                 if let id = draft.id {
                     if confirmDelete {
                         Text("Are you sure?").font(Theme.small)
+                        Button("Cancel") { confirmDelete = false }
                         Button("Delete", role: .destructive) {
                             model.deleteSchedule(id: id)
                             dismiss()
                         }
-                        Button("Cancel") { confirmDelete = false }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Theme.danger)
                     } else {
-                        Button("Delete", role: .destructive) { confirmDelete = true }
+                        Button("Delete", role: .destructive) { confirmDelete = true }.foregroundStyle(Theme.danger)
                     }
                 }
                 Spacer()
@@ -113,40 +115,27 @@ struct EditableNoteCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if editing {
-                NoteInput(text: $draft, placeholder: "Note", submit: save)
-                    .onKeyPress(keys: [.return]) { press in
-                        guard press.modifiers.contains(.command) else { return .ignored }
-                        save()
-                        return .handled
-                    }
-                    .onKeyPress(.escape) { cancel(); return .handled }
-                HStack {
-                    Text("⌘↩ saves, Esc cancels").font(Theme.small).foregroundStyle(Theme.muted)
-                    Spacer()
-                    Button("Cancel", action: cancel)
-                    Button("Save", action: save).buttonStyle(.borderedProminent)
-                }
-                .controlSize(.small)
-                if let error { Text(error).font(Theme.small).foregroundStyle(Theme.warn) }
+                InlineNoteEditor(text: $draft, saveTitle: "Save", error: error, onSave: save, onCancel: cancel)
             } else {
-                NoteCard(date: date, text: text, scheduled: false)
-                if confirming {
-                    HStack {
-                        Text("Delete this note?").font(Theme.small)
-                        Spacer()
-                        Button("Cancel") { confirming = false }
-                        Button("Delete", role: .destructive, action: onDelete)
+                NoteCard(date: date, text: text, scheduled: false) {
+                    if confirming {
+                        HStack(spacing: 8) {
+                            Text("Delete?").font(Theme.small)
+                            Button("Cancel") { confirming = false }
+                            Button("Delete", role: .destructive, action: onDelete)
+                                .buttonStyle(.borderedProminent)
+                                .tint(Theme.danger)
+                        }
+                        .controlSize(.small)
+                    } else {
+                        HStack(spacing: 10) {
+                            Button(action: edit) { Image(systemName: "pencil") }.help("Edit note")
+                            Button { confirming = true } label: { Image(systemName: "trash") }.help("Delete note")
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(Theme.muted)
+                        .font(Theme.small)
                     }
-                    .controlSize(.small)
-                } else {
-                    HStack(spacing: 12) {
-                        Spacer()
-                        Button(action: edit) { Image(systemName: "pencil") }.help("Edit note")
-                        Button { confirming = true } label: { Image(systemName: "trash") }.help("Delete note")
-                    }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(Theme.muted)
-                    .font(Theme.small)
                 }
             }
         }
@@ -171,6 +160,92 @@ struct EditableNoteCard: View {
     private func save() {
         do {
             try onSave(draft)
+            editing = false
+            error = nil
+        } catch {
+            self.error = "Could not save: \(error)"
+        }
+    }
+}
+
+/// The note editor used in place of a card: ⌘↩ saves and Esc cancels, read from the focused editor.
+struct InlineNoteEditor: View {
+    @Binding var text: String
+    let saveTitle: String
+    let error: String?
+    let onSave: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NoteInput(text: $text, placeholder: "Note", submit: onSave)
+            .onKeyPress(keys: [.return]) { press in
+                guard press.modifiers.contains(.command) else { return .ignored }
+                onSave()
+                return .handled
+            }
+            .onKeyPress(.escape) { onCancel(); return .handled }
+        HStack {
+            Text("⌘↩ saves, Esc cancels").font(Theme.small).foregroundStyle(Theme.muted)
+            Spacer()
+            Button("Cancel", action: onCancel)
+            Button(saveTitle, action: onSave).buttonStyle(.borderedProminent)
+        }
+        .controlSize(.small)
+        if let error { Text(error).font(Theme.small).foregroundStyle(Theme.warn) }
+    }
+}
+
+/// A suggested note from the project's state. Accept opens it in the editor, so the owner can change the text before it
+/// becomes a note; dismiss hides it until the state changes (ADR-006).
+struct DraftNoteCard: View {
+    let text: String
+    let onAccept: (String) throws -> Void
+    let onDismiss: () -> Void
+    @State private var editing = false
+    @State private var draft = ""
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if editing {
+                InlineNoteEditor(text: $draft, saveTitle: "Add Note", error: error, onSave: accept, onCancel: { editing = false; error = nil })
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("Draft").font(Theme.chip).foregroundStyle(Theme.muted)
+                        Spacer(minLength: 8)
+                        HStack(spacing: 10) {
+                            Button(action: edit) { Image(systemName: "checkmark") }.help("Accept as a note")
+                            Button(action: onDismiss) { Image(systemName: "xmark") }.help("Dismiss until this changes")
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(Theme.muted)
+                    .font(Theme.small)
+                    Text(text).font(Theme.body).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay {
+                    RoundedRectangle(cornerRadius: Theme.corner).strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
+            }
+        }
+        .contextMenu {
+            Button("Accept as Note…", action: edit)
+            Button("Dismiss", action: onDismiss)
+        }
+    }
+
+    private func edit() {
+        draft = text
+        error = nil
+        editing = true
+    }
+
+    private func accept() {
+        do {
+            try onAccept(draft)
             editing = false
             error = nil
         } catch {

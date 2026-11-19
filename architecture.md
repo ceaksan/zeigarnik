@@ -1,6 +1,6 @@
 # Zeigarnik - Architecture
 
-Native macOS app (window plus menubar extra) that shows, day by day, what is going on across a developer's git repositories: last activity by Claude Code, Codex or commit, uncommitted and unpushed work, README and architecture document drift, evidence-based spec progress, estimated time per project, repository visibility, and the owner's own notes, pins and scheduled follow-ups. A command-line scanner (`zeigarnik-scan`) shares the same core and database.
+Native macOS app (window plus menubar extra) that shows, day by day, what is going on across a developer's git repositories: last activity by Claude Code, Codex or commit, uncommitted and unpushed work, README and architecture document drift, evidence-based spec progress, estimated time per project, repository visibility, and the owner's own notes, pins and scheduled follow-ups. A command-line scanner (`zeigarnik-scan`) shares the same core and database, and `zeigarnik` gives agents and the shell access to notes, with an MCP server (ADR-006).
 
 <!--
 Living Architecture Template v1.0
@@ -37,7 +37,7 @@ Last verified: 2026-11-19
 
 ```
 zeigarnik/
-├── Package.swift              # ZeigarnikCore, ZeigarnikKit, ZeigarnikUI, zeigarnik-scan
+├── Package.swift              # ZeigarnikCore, ZeigarnikKit, ZeigarnikUI, ZeigarnikAgent, zeigarnik-scan, zeigarnik
 ├── project.yml                # xcodegen app target (thin: @main + Info.plist keys)
 ├── App/ZeigarnikApp.swift     # @main, hands off to ZeigarnikScenes
 ├── Sources/
@@ -48,7 +48,7 @@ zeigarnik/
 │   │   ├── Specs/             # Spec and plan discovery, task parsing, evidence, Active Tasks counts
 │   │   ├── Live/              # "Open now" from hc
 │   │   ├── Scan/              # ScanConfig, ProjectScanner (one scan), RowFormatter for the CLI
-│   │   ├── Store/             # Schema (migrations v1 to v6), Store reads and writes, identity, owner data
+│   │   ├── Store/             # Schema (migrations v1 to v7), Store reads and writes, identity, owner data, note drafts
 │   │   └── Support/           # ProcessRunner (own process group, timeouts, no shell), AppPaths
 │   ├── ZeigarnikKit/          # App logic without SwiftUI, tested with swift test
 │   │   ├── Model/             # AppModel (@Observable), AppSettings, settings effects, open targets, herdr open, menubar summary
@@ -60,9 +60,12 @@ zeigarnik/
 │   │   ├── Window/, List/, Calendar/, Inspector/, Sheets/, Menubar/, Settings/, Welcome/
 │   │   ├── Support/           # About links, folder chooser, open buttons, search focus
 │   │   └── Theme/             # Colors, components
-│   └── ZeigarnikScan/main.swift  # CLI: --root (required), --vault, --db, --no-fetch, --json
+│   ├── ZeigarnikAgent/        # Notes, projects and drafts for the shell and agents; hand-written stdio MCP server
+│   ├── ZeigarnikScan/main.swift  # CLI: --root (required), --vault, --db, --no-fetch, --json
+│   └── ZeigarnikCLI/main.swift   # `zeigarnik`: projects, status, notes list|show|add|edit|delete, drafts, mcp
 ├── Tests/ZeigarnikCoreTests/  # Parsers, store, scanner end to end (fake runner), synthetic fixtures
 ├── Tests/ZeigarnikKitTests/   # Model, filters, settings, coordinator, calendar sync, formatting
+├── Tests/ZeigarnikAgentTests/ # Notes service, project and note resolution, MCP protocol
 └── docs/adr/                  # Architecture decision records
 ```
 
@@ -72,7 +75,8 @@ zeigarnik/
 - `ZeigarnikCore/Store`: the only place that talks SQL. Owns migrations, so the app and the CLI always share one schema.
 - `ZeigarnikKit/Model/AppModel.swift`: everything a view reads or changes goes through it. Store reads run off the main actor; a failed reload keeps the last rows and sets `loadError`.
 - `ZeigarnikKit/Scan/ScanCoordinator.swift`: scans on launch, every `scanInterval`, and on request; requests during a scan collapse into one follow-up.
-- `ZeigarnikUI/AppEnvironment.swift`: builds store, scanner, coordinator, calendar sync and model; applies settings changes (rescan, reload, timer, calendar, login item).
+- `ZeigarnikUI/AppEnvironment.swift`: builds store, scanner, coordinator, calendar sync and model; applies settings changes (rescan, reload, timer, calendar, login item); polls for writes from other connections every 2 seconds.
+- `ZeigarnikAgent`: the only way outside the app to change notes. The MCP server exposes no delete (ADR-006).
 
 ## Data Flow
 
@@ -112,6 +116,7 @@ Note / pin / schedule / spec override in the UI
 | commitDay | Commits per project per day |
 | specEvidence, specOverride | Spec progress evidence and the owner's manual overrides |
 | note, scheduledItem, calendarOp | Owner notes, scheduled follow-ups, pending calendar operations |
+| noteDraftDismissal | Dismissed or accepted note drafts with the state fingerprint they were dismissed at; drafts themselves are computed (ADR-006) |
 | repoVisibility | public / private / unknown with check time |
 
 Time estimate: messages of one session closer together than the activity gap (default 15 minutes) form an interval; per project, intervals are unioned, so parallel sessions count once. Totals are computed when rows load, so a gap change needs no rescan.
@@ -128,7 +133,7 @@ Time estimate: messages of one session closer together than the activity gap (de
 | Scan Every | 2 hours | 1, 2, 4 or 8 |
 | Activity Gap | 15 minutes | 5, 10, 15, 20 or 30 |
 
-The CLI takes the same paths as flags and runs without the visibility probe.
+The CLI takes the same paths as flags and runs without the visibility probe. `zeigarnik` reads the app's README and architecture switches and activity gap from the app's preferences, so its drafts match the app's.
 
 ## Security
 
@@ -136,6 +141,7 @@ The CLI takes the same paths as flags and runs without the visibility probe.
 - Agent logs: only agent, session id, timestamp, cwd and source are stored; never prompt or message text.
 - Remote URLs pass through `sanitizeRemoteURL` before storage, so embedded credentials are never persisted.
 - Network: `git fetch`, and with the visibility check on, one request per repository per day to `gh` or the GitHub/GitLab public API (unauthenticated, `User-Agent: Zeigarnik`). No telemetry.
+- `zeigarnik mcp` speaks only over standard input and output, opens no port, and offers no delete tool.
 - Processes run without a shell (`ProcessRunner`), each in its own process group with a timeout, so a timeout also ends helpers such as `git-remote-https` (ADR-005). Git runs with `GIT_ASKPASS` and `SSH_ASKPASS` cleared.
 
 ## Constraints & Trade-offs
@@ -166,4 +172,5 @@ The CLI takes the same paths as flags and runs without the visibility probe.
 ```
 App --> ZeigarnikUI --> ZeigarnikKit --> ZeigarnikCore --> GRDB
 zeigarnik-scan -------------------------> ZeigarnikCore
+zeigarnik --> ZeigarnikAgent -----------> ZeigarnikCore
 ```

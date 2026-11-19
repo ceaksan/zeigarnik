@@ -12,6 +12,7 @@ public enum Theme {
     public static let accent = color(light: 0x0a84ff, dark: 0x0a84ff)
     public static let accentSoft = color(light: 0xe5f0ff, dark: 0x16304f)
     public static let warn = color(light: 0xc2410c, dark: 0xfb923c)
+    public static let danger = color(light: 0xd70015, dark: 0xff453a)
     public static let warnSoft = color(light: 0xfff1e6, dark: 0x3a2416)
     public static let ok = color(light: 0x1a7f37, dark: 0x4ade80)
     public static let okSoft = color(light: 0xe7f6ec, dark: 0x163222)

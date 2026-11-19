@@ -182,17 +182,26 @@ public struct KeyValueGrid: View {
     }
 }
 
-public struct NoteCard: View {
+extension NoteCard where Accessory == EmptyView {
+    public init(date: String, text: String, scheduled: Bool, badge: String? = nil) {
+        self.init(date: date, text: text, scheduled: scheduled, badge: badge) { EmptyView() }
+    }
+}
+
+/// `accessory` sits at the right of the date line, inside the card, so controls read as belonging to that note.
+public struct NoteCard<Accessory: View>: View {
     private let date: String
     private let text: String
     private let scheduled: Bool
     private let badge: String?
+    private let accessory: Accessory
 
-    public init(date: String, text: String, scheduled: Bool, badge: String? = nil) {
+    public init(date: String, text: String, scheduled: Bool, badge: String? = nil, @ViewBuilder accessory: () -> Accessory) {
         self.date = date
         self.text = text
         self.scheduled = scheduled
         self.badge = badge
+        self.accessory = accessory()
     }
 
     public var body: some View {
@@ -203,6 +212,7 @@ public struct NoteCard: View {
                     .foregroundStyle(Theme.muted)
                 Spacer(minLength: 8)
                 if let badge { Tag(badge) }
+                accessory
             }
             Text(text)
                 .font(Theme.body)

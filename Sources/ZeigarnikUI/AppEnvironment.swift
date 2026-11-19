@@ -93,6 +93,14 @@ public final class AppEnvironment {
                 self?.refreshUpcoming()
             }
         }
+        // Notes written by the command-line tool or an agent appear without a restart (ADR-006).
+        Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self else { return }
+                _ = await self.model.checkExternalChanges()
+            }
+        }
         eventObserver = NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: gateway.eventStore, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.model.reconcileCalendar()
