@@ -33,7 +33,10 @@ public final class AppEnvironment {
     @ObservationIgnored private var started = false
 
     public init() {
-        let home = FileManager.default.homeDirectoryForCurrentUser
+        var home = FileManager.default.homeDirectoryForCurrentUser
+        #if DEBUG
+        if let override = LaunchOptions.home(from: ProcessInfo.processInfo.arguments) { home = override }
+        #endif
         let settingsStore = SettingsStore(defaults: .standard)
         var settings = settingsStore.load(home: home)
         #if DEBUG

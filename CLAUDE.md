@@ -9,6 +9,7 @@
 - Test: `swift test` (filter: `swift test --filter <Suite>`)
 - CLI: `swift run zeigarnik-scan --root <folder> --no-fetch` (`--root` is required, repeatable; `--vault`, `--db`, `--json`)
 - App: `xcodegen generate` after adding or removing files, then `xcodebuild -project Zeigarnik.xcodeproj -scheme Zeigarnik -configuration Release -derivedDataPath build build`
+- Debug app on a separate data set (screenshots, trials): build Debug with its own `PRODUCT_BUNDLE_IDENTIFIER`, launch with `--home <absolute dir>` (database, `.claude`, `.codex` come from there) and `--settings-json '<AppSettings JSON>'` for roots.
 - Builds run one at a time and only with the owner's approval.
 
 ## Rules
