@@ -116,7 +116,7 @@ Note / pin / schedule / spec override in the UI
 | commitDay | Commits per project per day |
 | specEvidence, specOverride | Spec progress evidence and the owner's manual overrides |
 | note, scheduledItem, calendarOp | Owner notes, scheduled follow-ups, pending calendar operations |
-| noteDraftDismissal | Dismissed or accepted note drafts with the state fingerprint they were dismissed at; drafts themselves are computed (ADR-006) |
+| noteDraftDismissal | Dismissed or accepted draft kinds per project, held until the kind clears; drafts themselves are computed (ADR-006) |
 | repoVisibility | public / private / unknown with check time |
 
 Time estimate: messages of one session closer together than the activity gap (default 15 minutes) form an interval; per project, intervals are unioned, so parallel sessions count once. Totals are computed when rows load, so a gap change needs no rescan.

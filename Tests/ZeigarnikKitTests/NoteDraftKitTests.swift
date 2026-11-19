@@ -43,6 +43,27 @@ import Testing
         #expect(await model.projectDetail(id).drafts.isEmpty)
     }
 
+    @Test func aStateThatClearsWithoutOpeningTheProjectBringsItsDraftBackLater() async throws {
+        let store = try Store.inMemory()
+        let id = try seeded(store)
+        let model = model(store)
+        await model.reload()
+        let push = try #require(await model.projectDetail(id).drafts.first { $0.kind == .push })
+        model.dismissDraft(push)
+
+        func snapshot(ahead: Int) throws {
+            try store.writeSnapshot(ProjectSnapshot(
+                projectId: id, day: "2026-11-19", scannedAt: Self.now,
+                status: GitStatus(branch: "main", upstream: "origin/main", ahead: ahead, behind: 0, changed: 0, untracked: 0, stash: 0),
+                fetch: nil, lastFetchAt: nil, lastCommitAt: nil, readme: .current, spec: nil, activeTasksOpen: nil, error: nil))
+        }
+        try snapshot(ahead: 0)
+        await model.reload()
+        try snapshot(ahead: 3)
+        await model.reload()
+        #expect(await model.projectDetail(id).drafts.map(\.kind) == [.push])
+    }
+
     @Test func readmeDraftsFollowTheReadmeCheck() async throws {
         let store = try Store.inMemory()
         let id = try seeded(store)

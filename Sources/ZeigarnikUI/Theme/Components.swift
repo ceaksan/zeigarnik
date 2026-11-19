@@ -188,13 +188,16 @@ extension NoteCard where Accessory == EmptyView {
     }
 }
 
-/// `accessory` sits at the right of the date line, inside the card, so controls read as belonging to that note.
+/// Text first, then a footer line: date and badge on the left, `accessory` (actions) on the right. A card with an accessory
+/// keeps the footer at one height whatever the accessory shows, so the text never moves, and tints on hover.
 public struct NoteCard<Accessory: View>: View {
     private let date: String
     private let text: String
     private let scheduled: Bool
     private let badge: String?
     private let accessory: Accessory
+    @State private var hovering = false
+    private var interactive: Bool { Accessory.self != EmptyView.self }
 
     public init(date: String, text: String, scheduled: Bool, badge: String? = nil, @ViewBuilder accessory: () -> Accessory) {
         self.date = date
@@ -205,31 +208,88 @@ public struct NoteCard<Accessory: View>: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text((scheduled ? "◷ " : "") + date)
-                    .font(Theme.chip)
-                    .foregroundStyle(Theme.muted)
-                Spacer(minLength: 8)
-                if let badge { Tag(badge) }
-                accessory
-            }
+        VStack(alignment: .leading, spacing: NoteCardLayout.footerGap) {
             Text(text)
                 .font(Theme.body)
                 .foregroundStyle(Theme.text)
                 .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Text((scheduled ? "◷ " : "") + date)
+                    .font(Theme.chip)
+                    .foregroundStyle(Theme.muted)
+                if let badge { Tag(badge) }
+                Spacer(minLength: 8)
+                accessory
+            }
+            .frame(height: interactive ? NoteCardLayout.footerHeight : nil)
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            if scheduled {
-                RoundedRectangle(cornerRadius: Theme.corner).fill(Theme.accentSoft)
-            }
+            if scheduled { RoundedRectangle(cornerRadius: Theme.corner).fill(Theme.accentSoft) }
+            if interactive && hovering { RoundedRectangle(cornerRadius: Theme.corner).fill(NoteCardLayout.hoverTint) }
         }
         .overlay {
             RoundedRectangle(cornerRadius: Theme.corner)
                 .strokeBorder(scheduled ? Theme.accent : Theme.line, lineWidth: 1)
         }
+        .onHover { hovering = interactive && $0 }
+    }
+}
+
+/// Shared by note, draft and scheduled-item cards so all keep the same footer.
+enum NoteCardLayout {
+    /// Fits the icon buttons and the small confirm buttons, so showing either does not move the text.
+    static let footerHeight: CGFloat = 24
+    static let footerGap: CGFloat = 6
+    static let hoverTint = Theme.text.opacity(0.05)
+}
+
+/// Edit and delete icons for a card footer. Delete asks inline, with buttons the size of the sheet's Cancel and Save.
+struct CardActions: View {
+    let editHelp: String
+    let deleteHelp: String
+    @Binding var confirming: Bool
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        if confirming {
+            HStack(spacing: 6) {
+                Text("Delete?").font(Theme.small)
+                Button("Cancel") { confirming = false }
+                Button("Delete", role: .destructive, action: onDelete)
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.danger)
+            }
+            .controlSize(.small)
+        } else {
+            HStack(spacing: 10) {
+                Button(action: onEdit) { Image(systemName: "pencil") }.help(editHelp)
+                Button { confirming = true } label: { Image(systemName: "trash") }.help(deleteHelp)
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(Theme.muted)
+            .font(Theme.small)
+        }
+    }
+}
+
+/// A scheduled item with the same footer actions as a note: edit opens the schedule sheet, delete removes it (and its event).
+struct ScheduledItemCard: View {
+    let date: String
+    let item: ScheduledItem
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    @State private var confirming = false
+
+    var body: some View {
+        NoteCard(date: date, text: item.title, scheduled: true, badge: UIFormat.syncBadge(item)) {
+            CardActions(editHelp: "Edit", deleteHelp: "Delete; the calendar event goes too", confirming: $confirming,
+                        onEdit: onEdit, onDelete: onDelete)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onEdit)
     }
 }
 

@@ -118,24 +118,7 @@ struct EditableNoteCard: View {
                 InlineNoteEditor(text: $draft, saveTitle: "Save", error: error, onSave: save, onCancel: cancel)
             } else {
                 NoteCard(date: date, text: text, scheduled: false) {
-                    if confirming {
-                        HStack(spacing: 8) {
-                            Text("Delete?").font(Theme.small)
-                            Button("Cancel") { confirming = false }
-                            Button("Delete", role: .destructive, action: onDelete)
-                                .buttonStyle(.borderedProminent)
-                                .tint(Theme.danger)
-                        }
-                        .controlSize(.small)
-                    } else {
-                        HStack(spacing: 10) {
-                            Button(action: edit) { Image(systemName: "pencil") }.help("Edit note")
-                            Button { confirming = true } label: { Image(systemName: "trash") }.help("Delete note")
-                        }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(Theme.muted)
-                        .font(Theme.small)
-                    }
+                    CardActions(editHelp: "Edit note", deleteHelp: "Delete note", confirming: $confirming, onEdit: edit, onDelete: onDelete)
                 }
             }
         }
@@ -196,44 +179,60 @@ struct InlineNoteEditor: View {
 }
 
 /// A suggested note from the project's state. Accept opens it in the editor, so the owner can change the text before it
-/// becomes a note; dismiss hides it until the state changes (ADR-006).
+/// becomes a note; dismiss hides it until the state is resolved (ADR-006).
 struct DraftNoteCard: View {
+    let kind: NoteDraftKind
     let text: String
     let onAccept: (String) throws -> Void
     let onDismiss: () -> Void
     @State private var editing = false
     @State private var draft = ""
     @State private var error: String?
+    @State private var hovering = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if editing {
                 InlineNoteEditor(text: $draft, saveTitle: "Add Note", error: error, onSave: accept, onCancel: { editing = false; error = nil })
             } else {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: NoteCardLayout.footerGap) {
+                    Text(text).font(Theme.body).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                     HStack {
-                        Text("Draft").font(Theme.chip).foregroundStyle(Theme.muted)
+                        Text("\(Self.label(kind)) draft").font(Theme.chip).foregroundStyle(Theme.muted)
                         Spacer(minLength: 8)
                         HStack(spacing: 10) {
                             Button(action: edit) { Image(systemName: "checkmark") }.help("Accept as a note")
-                            Button(action: onDismiss) { Image(systemName: "xmark") }.help("Dismiss until this changes")
+                            Button(action: onDismiss) { Image(systemName: "xmark") }.help("Dismiss until this is resolved")
                         }
                     }
+                    .frame(height: NoteCardLayout.footerHeight)
                     .buttonStyle(.borderless)
                     .foregroundStyle(Theme.muted)
                     .font(Theme.small)
-                    Text(text).font(Theme.body).foregroundStyle(Theme.muted).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    if hovering { RoundedRectangle(cornerRadius: Theme.corner).fill(NoteCardLayout.hoverTint) }
+                }
                 .overlay {
                     RoundedRectangle(cornerRadius: Theme.corner).strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                 }
+                .onHover { hovering = $0 }
             }
         }
         .contextMenu {
             Button("Accept as Note…", action: edit)
             Button("Dismiss", action: onDismiss)
+        }
+    }
+
+    static func label(_ kind: NoteDraftKind) -> String {
+        switch kind {
+        case .readme: "README"
+        case .architecture: "Architecture"
+        case .push: "Push"
+        case .uncommitted: "Uncommitted"
         }
     }
 

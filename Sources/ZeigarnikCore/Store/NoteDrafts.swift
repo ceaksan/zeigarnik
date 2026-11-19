@@ -10,7 +10,7 @@ public struct NoteDraft: Sendable, Equatable, Codable {
     public let projectId: String
     public let kind: NoteDraftKind
     public let text: String
-    /// The state that produced the draft; a dismissal holds until this changes.
+    /// The state that produced the draft, stored with a dismissal for reference.
     public let fingerprint: String
 }
 
@@ -68,24 +68,24 @@ extension Store {
         try dbQueue.write { db in try Self.dismiss(db, draft, now: now) }
     }
 
-    /// The drafts not dismissed at their current state. For each project in `projectIds`, a kind with no draft any more
-    /// forgets its dismissal, so the same state returning later is offered again. Other projects' dismissals are untouched.
+    /// The drafts whose kind is not dismissed for their project. A dismissal holds while the kind keeps producing a draft,
+    /// whatever its counts do; for each project in `projectIds`, a kind with no draft any more forgets its dismissal, so the
+    /// state returning later is offered again. Other projects' dismissals are untouched.
     public func openNoteDrafts(_ drafts: [NoteDraft], projectIds: Set<String>) throws -> [NoteDraft] {
         try dbQueue.write { db in
             let current = Set(drafts.map { "\($0.projectId)\u{1F}\($0.kind.rawValue)" })
-            var dismissed: [String: String] = [:]
+            var dismissed: Set<String> = []
             for projectId in projectIds {
-                for row in try Row.fetchAll(db, sql: "SELECT kind, fingerprint FROM noteDraftDismissal WHERE projectId = ?", arguments: [projectId]) {
-                    let kind: String = row["kind"]
+                for kind in try String.fetchAll(db, sql: "SELECT kind FROM noteDraftDismissal WHERE projectId = ?", arguments: [projectId]) {
                     let key = "\(projectId)\u{1F}\(kind)"
                     if current.contains(key) {
-                        dismissed[key] = row["fingerprint"]
+                        dismissed.insert(key)
                     } else {
                         try db.execute(sql: "DELETE FROM noteDraftDismissal WHERE projectId = ? AND kind = ?", arguments: [projectId, kind])
                     }
                 }
             }
-            return drafts.filter { dismissed["\($0.projectId)\u{1F}\($0.kind.rawValue)"] != $0.fingerprint }
+            return drafts.filter { !dismissed.contains("\($0.projectId)\u{1F}\($0.kind.rawValue)") }
         }
     }
 

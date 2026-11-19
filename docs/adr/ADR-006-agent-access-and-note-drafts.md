@@ -20,8 +20,9 @@ Notes live only inside the app. The owner wants to talk about them with a coding
 ### Note drafts
 
 - A draft is computed, never stored: `noteDrafts(for:checks:)` turns a project row into at most one draft per kind (`readme`, `architecture`, `push`, `uncommitted`). Missing projects have none. README and architecture drafts follow the app's check settings.
-- Each draft carries a fingerprint of the state that produced it (for example `behind:6` for a README six commits behind). Migration `v7-note-draft` adds `noteDraftDismissal (projectId, kind, fingerprint, dismissedAt)`, one row per project and kind.
-- Dismissing a draft stores its fingerprint; the draft stays hidden until its state changes. When a kind has no draft for a project any more (the state cleared), its dismissal is removed, so the same state coming back later shows the draft again.
+- Migration `v7-note-draft` adds `noteDraftDismissal (projectId, kind, fingerprint, dismissedAt)`, one row per project and kind. The fingerprint (for example `behind:6` for a README six commits behind) records the state at dismissal for reference only.
+- A dismissal holds for the kind, not the exact state: a README that goes from 6 to 9 commits behind, or an uncommitted-changes count that moves, does not bring the draft back. When a kind has no draft for a project any more (the state cleared), its dismissal is removed, so the state coming back later shows the draft again. Every reload (one follows each scan) does this for all projects, not only the one on screen. The card names its kind (README, Architecture, Push, Uncommitted).
+- Changed in 0.2.1: 0.2.0 compared fingerprints, so every count change brought a dismissed draft back and accepting the same uncommitted-changes draft twice produced duplicate notes.
 - Accepting a draft opens it in the note editor; saving adds a note dated today and dismisses the draft in one transaction, so the accepted state does not offer the same draft again.
 
 ### External changes
@@ -37,7 +38,7 @@ Notes live only inside the app. The owner wants to talk about them with a coding
 
 ### Negative
 - A second executable to build and install (`~/.local/bin/zeigarnik`), and a hand-written protocol to keep in step with MCP revisions.
-- Draft fingerprints for uncommitted changes follow the file counts, so a dismissed uncommitted-changes draft returns when the count changes.
+- A dismissed draft stays hidden while its kind lasts, even when the state gets worse (more commits behind, more files changed); the column still shows the current numbers.
 - A 2-second timer runs for the life of the app (one pragma read per tick).
 
 ### Alternatives Considered

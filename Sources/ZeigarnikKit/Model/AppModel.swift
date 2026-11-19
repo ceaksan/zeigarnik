@@ -144,9 +144,12 @@ public final class AppModel {
         let today = self.today
         let calendar = self.calendar
         let gap = self.gap
+        let checks = draftChecks
         let loaded = await Task.detached(priority: .userInitiated) { () -> (Result<([ProjectRow], ActivityIndex), any Error>, [SourceProblem]) in
             let data = Result {
                 let rows = try store.projectRows(today: today, gap: gap)
+                // Forgets dismissals whose state cleared, so it shows again when it returns, even if the project was never opened.
+                _ = try? store.openNoteDrafts(rows.flatMap { noteDrafts(for: $0, checks: checks) }, projectIds: Set(rows.map(\.id)))
                 let index = buildActivityIndex(messages: try store.effectiveMessages(), commitDays: try store.commitDays(),
                                                calendar: calendar, gap: gap)
                 return (rows, index)

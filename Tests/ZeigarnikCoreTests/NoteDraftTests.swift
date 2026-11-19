@@ -49,13 +49,13 @@ import Testing
         #expect(noteDrafts(for: row(readme: behind), checks: NoteDraftChecks(readme: false, architecture: true)).isEmpty)
     }
 
-    @Test func dismissedDraftStaysHiddenUntilItsStateChanges() throws {
+    @Test func dismissedDraftStaysHiddenWhileItsKindLasts() throws {
         let six = noteDrafts(for: row(readme: .behind(commits: 6, codeFiles: 4, manifestChanged: false)))
         try store.dismissNoteDraft(six[0], now: now)
         #expect(try store.openNoteDrafts(six, projectIds: [project]).isEmpty)
 
-        let nine = noteDrafts(for: row(readme: .behind(commits: 9, codeFiles: 4, manifestChanged: false)))
-        #expect(try store.openNoteDrafts(nine, projectIds: [project]) == nine)
+        let nine = noteDrafts(for: row(readme: .behind(commits: 9, codeFiles: 4, manifestChanged: true)))
+        #expect(try store.openNoteDrafts(nine, projectIds: [project]).isEmpty)
     }
 
     @Test func aClearedStateForgetsItsDismissal() throws {

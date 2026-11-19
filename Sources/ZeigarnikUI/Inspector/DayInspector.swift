@@ -22,10 +22,10 @@ struct DayInspector: View {
                     SectionHeader("Scheduled")
                     VStack(spacing: 6) {
                         ForEach(detail.items) { item in
-                            NoteCard(date: "\(UIFormat.time(item.start, model.calendar)) · \(model.displayName(item.projectId))", text: item.title,
-                                     scheduled: true, badge: UIFormat.syncBadge(item))
-                                .onTapGesture { onSchedule(ScheduleDraft(id: item.id, projectId: item.projectId, title: item.title, start: item.start,
-                                                                         duration: item.duration, addToCalendar: item.wantsCalendar)) }
+                            ScheduledItemCard(date: "\(UIFormat.time(item.start, model.calendar)) · \(model.displayName(item.projectId))", item: item,
+                                              onEdit: { onSchedule(ScheduleDraft(id: item.id, projectId: item.projectId, title: item.title, start: item.start,
+                                                                                 duration: item.duration, addToCalendar: item.wantsCalendar)) },
+                                              onDelete: { model.deleteSchedule(id: item.id) })
                         }
                     }
                 }

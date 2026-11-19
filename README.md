@@ -10,7 +10,7 @@ Named after the Zeigarnik effect: unfinished tasks are remembered better than fi
 - **Sidebar filters**: pinned, open now, uncommitted, push or upstream problems, README or architecture behind, public, quiet for 30+ days, folders, missing.
 - **Calendar view**: a month grid of activity, notes and scheduled items per day.
 - **Project and day inspectors**: facts, 14-day activity, spec tasks with evidence, notes and schedules. Notes can be edited or deleted from the icons under each note.
-- **Note drafts**: a README or architecture document behind, unpushed commits or uncommitted changes show up as a draft above the project's notes. Accept opens it in the editor and adds it as today's note; dismiss hides it until that state changes.
+- **Note drafts**: a README or architecture document behind, unpushed commits or uncommitted changes show up as a draft above the project's notes. Accept opens it in the editor and adds it as today's note; dismiss hides that kind of draft for the project until the state is resolved.
 - **Notes for agents**: the `zeigarnik` command and its MCP server let Claude Code, Codex or another agent list, read, add and edit your notes. Agents cannot delete notes.
 - **Menubar extra**: today's attention items and quick actions.
 - **Open in**: Finder, your terminal or editor, and herdr when installed.

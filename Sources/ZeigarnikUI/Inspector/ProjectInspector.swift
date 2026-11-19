@@ -154,12 +154,13 @@ struct ProjectInspector: View {
         SectionHeader("Notes and Schedules")
         VStack(spacing: 6) {
             ForEach(detail.drafts, id: \.kind) { draft in
-                DraftNoteCard(text: draft.text, onAccept: { try model.acceptDraft(draft, text: $0) }, onDismiss: { model.dismissDraft(draft) })
-                    .id("\(draft.kind.rawValue)-\(draft.fingerprint)")
+                DraftNoteCard(kind: draft.kind, text: draft.text, onAccept: { try model.acceptDraft(draft, text: $0) }, onDismiss: { model.dismissDraft(draft) })
+                    .id("\(draft.kind.rawValue)-\(draft.text)")
             }
             ForEach(detail.items) { item in
-                NoteCard(date: UIFormat.dayMonthTime(item.start, model.calendar), text: item.title, scheduled: true, badge: UIFormat.syncBadge(item))
-                    .onTapGesture { onSchedule(ScheduleDraft(id: item.id, projectId: item.projectId, title: item.title, start: item.start, duration: item.duration, addToCalendar: item.wantsCalendar)) }
+                ScheduledItemCard(date: UIFormat.dayMonthTime(item.start, model.calendar), item: item,
+                                  onEdit: { onSchedule(ScheduleDraft(id: item.id, projectId: item.projectId, title: item.title, start: item.start, duration: item.duration, addToCalendar: item.wantsCalendar)) },
+                                  onDelete: { model.deleteSchedule(id: item.id) })
             }
             ForEach(detail.notes) { note in
                 EditableNoteCard(date: UIFormat.dayMonth(note.day, model.calendar), text: note.text,
