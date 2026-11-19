@@ -51,6 +51,7 @@ struct WelcomeView: View {
                         switch environment.calendarAccess {
                         case .notDetermined: Button("Request Access") { Task { await environment.requestCalendarAccess() } }
                         case .denied: Text("Calendar access is off. You can allow it later in System Settings.").foregroundStyle(Theme.muted)
+                        case .writeOnly: Text("Calendar access is write-only. Allow full access later in System Settings.").foregroundStyle(Theme.muted)
                         case .granted: Text("Calendar access is on. Choose the target calendar in Settings.").foregroundStyle(Theme.muted)
                         }
                     }

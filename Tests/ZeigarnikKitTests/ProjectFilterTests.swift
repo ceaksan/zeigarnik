@@ -66,6 +66,11 @@ func status(branch: String? = "main", upstream: String? = "origin/main", ahead: 
         #expect(folder(of: row("harbor", path: "/x/harbor"), roots: ["/r"]) == "Outside")
     }
 
+    @Test func anyFirstLevelFolderGroupsItsProjectsWithoutANumberPrefix() {
+        #expect(folder(of: row("orbit", path: "/r/Work/orbit"), roots: ["/r"]) == "Work")
+        #expect(folder(of: row("lumen", path: "/r/side projects/web/lumen"), roots: ["/r"]) == "side projects")
+    }
+
     @Test func searchIgnoresCaseAndDiacritics() {
         let rows = [row("Türkçe Yemek Tarifleri"), row("orbit")]
         #expect(search(rows, "turkce").map(\.id) == ["Türkçe Yemek Tarifleri"])

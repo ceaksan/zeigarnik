@@ -11,8 +11,10 @@ public struct GitIdentity: Sendable, Equatable, Codable {
     public let commonDir: String
     public let rootCommits: Set<String>
     public let remoteURL: String?
+    public let remoteResolved: Bool
 
-    public init(commonDir: String, rootCommits: Set<String>, remoteURL: String?) {
+    public init(commonDir: String, rootCommits: Set<String>, remoteURL: String?, remoteResolved: Bool = true) {
+        self.remoteResolved = remoteResolved
         self.commonDir = commonDir
         self.rootCommits = rootCommits
         self.remoteURL = remoteURL
@@ -40,6 +42,8 @@ public struct GitInspector: Sendable {
 
     static let environment: [String: String] = [
         "GIT_TERMINAL_PROMPT": "0",
+        "GIT_ASKPASS": "",
+        "SSH_ASKPASS": "",
         "GIT_SSH_COMMAND": "ssh -o BatchMode=yes -o ConnectTimeout=10",
         "GIT_OPTIONAL_LOCKS": "0",
         "LC_ALL": "C",
@@ -91,7 +95,7 @@ public struct GitInspector: Sendable {
         let roots = await git(repo, ["rev-list", "--max-parents=0", "HEAD"])
         let remote = await git(repo, ["config", "--get", "remote.origin.url"])
         func text(_ r: CommandResult) -> String? {
-            guard r.exitCode == 0 else { return nil }
+            guard r.exitCode == 0, !r.timedOut else { return nil }
             let value = String(decoding: r.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
             return value.isEmpty ? nil : value
         }
@@ -99,7 +103,9 @@ public struct GitInspector: Sendable {
         return GitIdentity(
             commonDir: text(commonDir).map { URL(fileURLWithPath: $0).standardizedFileURL.path } ?? repo.appendingPathComponent(".git").path,
             rootCommits: rootSet,
-            remoteURL: text(remote).map(sanitizeRemoteURL)
+            remoteURL: text(remote).map(sanitizeRemoteURL),
+            remoteResolved: commonDir.exitCode == 0 && !commonDir.timedOut && !remote.timedOut
+                && (remote.exitCode == 0 || remote.exitCode == 1)
         )
     }
 

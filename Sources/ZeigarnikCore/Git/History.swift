@@ -48,7 +48,7 @@ public func commitsPerDay(_ history: [CommitRecord], calendar: Calendar) -> [Str
 
 extension GitInspector {
     public func history(_ repo: URL) async throws -> [CommitRecord] {
-        let output = try await gitOrThrow(repo, ["log", "--no-renames", "--format=%x1e%H%x1f%P%x1f%aI%x1f%s", "--name-only"], timeout: .seconds(30))
+        let output = try await gitOrThrow(repo, ["-c", "core.quotePath=false", "log", "--no-renames", "--format=%x1e%H%x1f%P%x1f%aI%x1f%s", "--name-only"], timeout: .seconds(30))
         return parseLog(String(decoding: output, as: UTF8.self))
     }
 }

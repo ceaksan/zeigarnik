@@ -77,7 +77,7 @@ struct ProjectTableView: View {
             TableColumn("≈ Total Time", sortUsing: RowSort(key: .time)) { row in
                 Text(row.totalSeconds > 0 ? Format.duration(row.totalSeconds) : "-").monospacedDigit()
             }
-            .width(min: 64, ideal: 72)
+            .width(min: 100, ideal: 104)
             .customizationID("time")
             TableColumn("Spec / Plan", sortUsing: RowSort(key: .spec)) { row in
                 specCell(row.spec)

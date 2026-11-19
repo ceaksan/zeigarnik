@@ -25,6 +25,26 @@ struct ProcessRunnerTests {
         #expect(Date().timeIntervalSince(start) < 3)
     }
 
+    /// A command that finished keeps its exit code even when a helper it started still holds the output pipe.
+    @Test func helperLeftInTheGroupDoesNotTurnSuccessIntoTimeout() async {
+        let start = Date()
+        let r = await ProcessRunner().run("/bin/sh", ["-c", "sleep 30 & echo done"], cwd: nil, environment: [:], timeout: .seconds(4))
+        #expect(r.exitCode == 0)
+        #expect(!r.timedOut)
+        #expect(String(decoding: r.stdout, as: UTF8.self) == "done\n")
+        #expect(Date().timeIntervalSince(start) < 2)
+    }
+
+    /// A helper in its own session (an ssh ControlPersist master, for example) is out of reach; the wait for it is bounded.
+    @Test func helperInAnotherSessionDoesNotTurnSuccessIntoTimeout() async {
+        let start = Date()
+        let script = "use POSIX; fork and exit; POSIX::setsid(); sleep 30"
+        let r = await ProcessRunner().run("/usr/bin/perl", ["-e", script], cwd: nil, environment: [:], timeout: .seconds(9))
+        #expect(r.exitCode == 0)
+        #expect(!r.timedOut)
+        #expect(Date().timeIntervalSince(start) < 8)
+    }
+
     @Test func largeOutputDoesNotDeadlock() async {
         let r = await ProcessRunner().run("/bin/dd", ["if=/dev/zero", "bs=1024", "count=300"], cwd: nil, environment: [:], timeout: .seconds(10))
         #expect(r.exitCode == 0)

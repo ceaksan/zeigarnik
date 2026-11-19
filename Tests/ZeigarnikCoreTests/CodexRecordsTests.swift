@@ -20,6 +20,25 @@ struct CodexRecordsTests {
     }
 
     @Test(arguments: [
+        "<codex_internal_context source=\"x\">Synthetic context.</codex_internal_context>",
+        "<codex_internal_context\nsource=\"x\">Synthetic context.</codex_internal_context>",
+        "<user_instructions>Synthetic instructions.</user_instructions>",
+        "<user_instructions source=\"x\">Synthetic instructions.</user_instructions>",
+    ])
+    func C6_instructionBlocksAreNotOwnerMessages(_ text: String) throws {
+        for legacy in [false, true] {
+            let message: [String: Any] = ["type": "message", "role": "user", "content": [["type": "input_text", "text": text]]]
+            var row: [String: Any] = legacy ? message : ["type": "response_item", "payload": message]
+            row["timestamp"] = "2026-01-01T10:00:00Z"
+            let data = try JSONSerialization.data(withJSONObject: row)
+            guard case .skipped = parseCodexRolloutLine(data, header: modernSession) else {
+                Issue.record("Instruction blocks must not count as owner messages")
+                continue
+            }
+        }
+    }
+
+    @Test(arguments: [
         ("codex-rollout-exec.jsonl", "s-exec"),
         ("codex-rollout-subagent.jsonl", "s-subagent"),
     ])

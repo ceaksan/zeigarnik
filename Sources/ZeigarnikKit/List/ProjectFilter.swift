@@ -28,9 +28,7 @@ public func folder(of row: ProjectRow, roots: [String]) -> String {
         let prefix = root.hasSuffix("/") ? root : root + "/"
         guard row.path.hasPrefix(prefix) else { continue }
         let components = row.path.dropFirst(prefix.count).split(separator: "/")
-        if components.count > 1, let first = components.first, first.range(of: #"^\d\d_"#, options: .regularExpression) != nil {
-            return String(first)
-        }
+        if components.count > 1, let first = components.first { return String(first) }
         return FolderLabel.root
     }
     return FolderLabel.outside

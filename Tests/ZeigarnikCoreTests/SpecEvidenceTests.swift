@@ -101,6 +101,14 @@ struct SpecEvidenceTests {
     @Test func specWithoutPlanIsDesign() {
         #expect(specStage(declared: nil, plan: nil, override: nil) == .design)
     }
+
+    @Test func C1_planWithoutEvidenceHasNoFraction() {
+        let empty = PlanEvidence(tasks: [TaskEvidenceDetail(number: 1, title: "Discuss orbit", evidence: .noEvidence, resolvedPaths: [], matchedCommits: [])])
+        #expect(specStage(declared: nil, plan: empty, override: nil) == .design)
+        #expect(specStage(declared: "Implemented", plan: empty, override: nil) == .design)
+        #expect(specStage(declared: nil, plan: empty, override: .notDone) == .design)
+        #expect(specStage(declared: nil, plan: empty, override: .done) == .done)
+    }
 }
 
 @Suite("SpecCatalog")
@@ -207,6 +215,16 @@ struct SpecCatalogTests {
         let specs = try catalogSpecs(repo: repo, context: ctx, overrides: [:])
         #expect(specs.first { $0.specPath == "openspec/changes/add-x" }?.stage == .inProgress(done: 1, total: 2, external: 0))
         #expect(specs.first { $0.specPath == "openspec/changes/archive/2026-01-01-old" }?.stage == .done)
+    }
+
+    @Test func C2_openSpecWithoutTasksHasNoFraction() throws {
+        let repo = try makeTempDir()
+        try write(repo, "openspec/changes/orbit/proposal.md", "# Orbit\n")
+        try write(repo, "openspec/changes/lumen/tasks.md", "# Lumen\nNo tasks yet.\n")
+        let ctx = EvidenceContext(trackedFiles: [], history: [], planIntroducedBy: nil, fileExists: { _ in false })
+        let specs = try catalogSpecs(repo: repo, context: ctx, overrides: [:])
+        #expect(specs.count == 2)
+        #expect(specs.allSatisfy { $0.stage == .design })
     }
 
     @Test func headlinePicksNewestNotDone() {

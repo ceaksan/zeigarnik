@@ -117,9 +117,14 @@ public func catalogSpecs(repo: URL, context: EvidenceContext, overrides: [String
     if FileManager.default.fileExists(atPath: repo.appendingPathComponent("SHARED_TASK_NOTES.md").path) {
         let text = read(repo, "SHARED_TASK_NOTES.md")
         let (checked, total) = checkboxCounts(text)
-        let stage: SpecStage = total == 0 ? .design : (checked == total ? .done : .inProgress(done: checked, total: total, external: 0))
+        let stage: SpecStage
+        switch overrides["SHARED_TASK_NOTES.md"] {
+        case .done: stage = .done
+        case .notDone: stage = total == 0 ? .design : .inProgress(done: checked, total: total, external: 0)
+        case nil: stage = total == 0 ? .design : (checked == total ? .done : .inProgress(done: checked, total: total, external: 0))
+        }
         summaries.append(SpecSummary(specPath: "SHARED_TASK_NOTES.md", planPath: nil, date: nil, title: title(text, fallback: "SHARED_TASK_NOTES.md"),
-                                     declared: nil, stage: overrides["SHARED_TASK_NOTES.md"] == .done ? .done : stage, evidence: nil))
+                                     declared: nil, stage: stage, evidence: nil))
     }
     return summaries
 }
@@ -168,7 +173,7 @@ private func openSpecChanges(_ repo: URL) -> [SpecSummary] {
     func add(_ relative: String, archived: Bool) {
         let tasks = read(repo, relative + "/tasks.md")
         let (checked, total) = checkboxCounts(tasks)
-        let stage: SpecStage = archived ? .done : .inProgress(done: checked, total: total, external: 0)
+        let stage: SpecStage = archived ? .done : (total == 0 ? .design : .inProgress(done: checked, total: total, external: 0))
         result.append(SpecSummary(specPath: relative, planPath: nil, date: datePrefix(relative), title: (relative as NSString).lastPathComponent,
                                   declared: nil, stage: stage, evidence: nil))
     }

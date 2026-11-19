@@ -15,7 +15,7 @@ public struct RootView: View {
 
     public var body: some View {
         NavigationSplitView {
-            SidebarView(model: model)
+            SidebarView(model: model, showOpenNow: environment.herdrAvailable)
         } detail: {
             VStack(spacing: 0) {
                 banners
@@ -84,6 +84,10 @@ public struct RootView: View {
                         SettingsLink { Text("Open Settings") }.padding(.trailing, 14)
                     }
                 }
+        }
+        if let report = environment.coordinator.lastReport, !report.relinks.isEmpty {
+            Banner("Moved projects found again (\(report.relinks.count)): " + report.relinks.prefix(3).map { model.displayName($0.projectId) }.joined(separator: ", "), tone: .neutral)
+                .help(report.relinks.map { "\($0.fromPath) → \($0.toPath)" }.joined(separator: "\n"))
         }
         if let report = environment.coordinator.lastReport, !report.errors.isEmpty {
             Banner("Errors in last scan (\(report.errors.count)): " + report.errors.prefix(3).map { $0.projectPath.map { "\(($0 as NSString).lastPathComponent): " } ?? "" }.joined(), tone: .warn)

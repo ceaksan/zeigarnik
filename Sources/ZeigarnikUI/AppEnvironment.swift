@@ -241,6 +241,7 @@ public final class AppEnvironment {
     var calendarWarning: String? {
         switch gateway.access() {
         case .denied: return "Calendar access is disabled. The schedule stays in the app and is not added to your calendar. You can grant access in Settings."
+        case .writeOnly: return "Calendar access is write-only, so Zeigarnik cannot find or update its events. The schedule stays in the app. You can allow full access in System Settings."
         case .notDetermined: return "You will be asked for calendar access when you save."
         case .granted: return model.settings.calendarId == nil ? "No target calendar selected. Choose one in Settings; the schedule will remain pending until then." : nil
         }
@@ -257,6 +258,7 @@ public final class AppEnvironment {
 
     static func openNowProvider(store: Store, config: ScanConfig, runner: ProcessRunner) -> @Sendable () async -> OpenNowState {
         {
+            guard FileManager.default.isExecutableFile(atPath: config.hcPath) else { return .unknown("herdr is not installed") }
             let projects = (try? store.currentProjectPaths()) ?? []
             let mapper = ProjectMapper(projects: projects, home: config.home, workspaceRoot: config.roots.first?.path ?? config.home)
             return await openNow(runner: runner, hcPath: config.hcPath, mapper: mapper)

@@ -20,4 +20,11 @@ import Testing
         let britishLocaleInNewYork = zeigarnikCalendar(timeZone: TimeZone(identifier: "America/New_York")!, locale: Locale(identifier: "en_GB"))
         #expect(Format.dayMonth(date, calendar: britishLocaleInNewYork) == "18/11")
     }
+
+    @Test func timeLeavesOtherCachedFormattersUntouched() {
+        let shared = Format.formatter(nil, plusThree)
+        _ = Format.time(Date(timeIntervalSince1970: 1_763_510_400), calendar: plusThree)
+        #expect(shared.timeStyle == .none)
+        #expect(shared.dateStyle == .none)
+    }
 }

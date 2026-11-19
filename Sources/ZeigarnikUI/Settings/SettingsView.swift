@@ -104,8 +104,10 @@ public struct SettingsView: View {
                 Button("Request Access") {
                     Task { await requestCalendarAccess() }
                 }
-            case .denied:
-                Banner("Calendar access is disabled. Schedules stay in the app and are not added to your calendar.", tone: .warn)
+            case .denied, .writeOnly:
+                Banner(calendarAccess == .writeOnly
+                       ? "Calendar access is write-only. Zeigarnik needs full access to find and update its events; schedules stay in the app until then."
+                       : "Calendar access is disabled. Schedules stay in the app and are not added to your calendar.", tone: .warn)
                 Button("Open System Settings") {
                     if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
                         NSWorkspace.shared.open(url)

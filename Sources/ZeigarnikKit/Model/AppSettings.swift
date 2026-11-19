@@ -96,8 +96,10 @@ public struct SettingsStore: @unchecked Sendable {
     }
 }
 
-public func scanConfig(from settings: AppSettings, home: URL) -> ScanConfig {
+public func scanConfig(from settings: AppSettings, home: URL,
+                       isExecutable: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }) -> ScanConfig {
     var config = ScanConfig.standard(roots: settings.roots.map { URL(fileURLWithPath: $0) }, vaultRoot: settings.vaultRoot.map { URL(fileURLWithPath: $0) }, home: home)
+    config.hcPath = hcPath(home: home, isExecutable: isExecutable)
     config.checkVisibility = settings.checkVisibility
     config.gap = settings.activityGap
     config.markRemovedRoots = true
@@ -135,4 +137,10 @@ public struct SettingsEffects: Equatable, Sendable {
                   reload: old.activityGapMinutes != new.activityGapMinutes, intervalChanged: old.scanIntervalHours != new.scanIntervalHours,
                   visibilityChanged: old.checkVisibility != new.checkVisibility)
     }
+}
+
+/// herdr's `hc`. Apps launched from Finder get a minimal PATH, so the usual install folders are checked by name.
+public func hcPath(home: URL, isExecutable: (String) -> Bool) -> String {
+    let userBin = home.appendingPathComponent(".local/bin/hc").path
+    return [userBin, "/opt/homebrew/bin/hc", "/usr/local/bin/hc"].first(where: isExecutable) ?? userBin
 }

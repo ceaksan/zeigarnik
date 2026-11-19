@@ -48,8 +48,8 @@ zeigarnik/
 │   │   ├── Specs/             # Spec and plan discovery, task parsing, evidence, Active Tasks counts
 │   │   ├── Live/              # "Open now" from hc
 │   │   ├── Scan/              # ScanConfig, ProjectScanner (one scan), RowFormatter for the CLI
-│   │   ├── Store/             # Schema (migrations v1 to v5), Store reads and writes, identity, owner data
-│   │   └── Support/           # ProcessRunner (timeouts, no shell), AppPaths
+│   │   ├── Store/             # Schema (migrations v1 to v6), Store reads and writes, identity, owner data
+│   │   └── Support/           # ProcessRunner (own process group, timeouts, no shell), AppPaths
 │   ├── ZeigarnikKit/          # App logic without SwiftUI, tested with swift test
 │   │   ├── Model/             # AppModel (@Observable), AppSettings, settings effects, open targets, herdr open, menubar summary
 │   │   ├── Scan/              # ScanCoordinator (one scan at a time, timer), source health
@@ -106,7 +106,7 @@ Note / pin / schedule / spec override in the UI
 
 | Table | Purpose |
 |-------|---------|
-| project, projectIdentity, projectPath | Stable project ids, identity evidence, known paths |
+| project, projectIdentity, projectPath | Stable project ids, identity evidence, known paths, project-table source (ADR-004) |
 | snapshot | Latest per-project facts: git status, README, architecture doc, summary, error |
 | ownerMessage, session, codexSession, fileCursor | Agent activity: timestamps only, never message text |
 | commitDay | Commits per project per day |
@@ -136,7 +136,7 @@ The CLI takes the same paths as flags and runs without the visibility probe.
 - Agent logs: only agent, session id, timestamp, cwd and source are stored; never prompt or message text.
 - Remote URLs pass through `sanitizeRemoteURL` before storage, so embedded credentials are never persisted.
 - Network: `git fetch`, and with the visibility check on, one request per repository per day to `gh` or the GitHub/GitLab public API (unauthenticated, `User-Agent: Zeigarnik`). No telemetry.
-- Processes run without a shell (`ProcessRunner`), with timeouts.
+- Processes run without a shell (`ProcessRunner`), each in its own process group with a timeout, so a timeout also ends helpers such as `git-remote-https` (ADR-005). Git runs with `GIT_ASKPASS` and `SSH_ASKPASS` cleared.
 
 ## Constraints & Trade-offs
 
@@ -144,11 +144,12 @@ The CLI takes the same paths as flags and runs without the visibility probe.
 - Unsigned or ad-hoc signed local builds change identity on every rebuild, so macOS asks for permissions again; signing with a development certificate keeps them.
 - `searchFocused` needs macOS 15; on macOS 14 the Find command focuses the toolbar search field through AppKit.
 - SwiftUI `Table` allows 10 columns; the table is at 10.
+- A first scan reads every agent log once. Parsing goes through Foundation, so each 16 MB batch drains its own autorelease pool; without it memory grew with the total log size (several GB on a busy machine), with it a first scan stays under 0.5 GB.
 
 ## Known Tech Debt
 
-- Project and day detail reads still use `try?`; a failing read shows an empty section instead of an error.
-- A manifest change that is only a version bump counts as architecture and README drift.
+- A manifest change that is only a version bump still counts as architecture drift. README drift compares dependency lists for `Package.swift`, `package.json`, `pyproject.toml` and `Cargo.toml`; other formats keep the whole-file rule.
+- Owner-data writes (notes, pins, schedules) run on the main actor; they are single-row SQLite writes. `displayName` falls back to the project id when the read fails.
 - Views are verified by running the app, not by UI tests.
 
 ## Code Hotspots

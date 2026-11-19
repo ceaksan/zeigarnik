@@ -1,6 +1,7 @@
 import Foundation
 
-public enum CalendarAccess: Sendable { case granted, denied, notDetermined }
+/// `writeOnly`: the app may add events but cannot read them back, so it cannot find or update its own events.
+public enum CalendarAccess: Sendable { case granted, writeOnly, denied, notDetermined }
 
 public struct CalendarInfo: Sendable, Equatable, Identifiable {
     public let id: String

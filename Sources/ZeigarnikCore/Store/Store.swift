@@ -85,11 +85,13 @@ public struct ProjectRow: Sendable, Equatable, Codable, Identifiable {
     public let totalSeconds: TimeInterval
     public let architecture: ArchitectureDoc?
     public let visibility: RepoVisibility?
+    public let isTableProject: Bool
 
     public init(id: String, displayName: String, summary: String?, path: String, state: ProjectState, pinned: Bool,
                 lastActivityAt: Date?, lastActivityAgent: Agent?, lastCommitAt: Date?, status: GitStatus?, lastFetchAt: Date?,
                 readme: ReadmeDrift?, spec: SpecHeadline?, activeTasksOpen: Int?, error: String?, totalSeconds: TimeInterval,
-                architecture: ArchitectureDoc? = nil, visibility: RepoVisibility? = nil) {
+                architecture: ArchitectureDoc? = nil, visibility: RepoVisibility? = nil, isTableProject: Bool = false) {
+        self.isTableProject = isTableProject
         self.architecture = architecture
         self.visibility = visibility
         self.id = id
@@ -115,7 +117,7 @@ public struct ProjectRow: Sendable, Equatable, Codable, Identifiable {
         ProjectRow(id: id, displayName: displayName, summary: summary, path: path, state: state, pinned: pinned,
                    lastActivityAt: lastActivityAt, lastActivityAgent: lastActivityAgent, lastCommitAt: lastCommitAt, status: status,
                    lastFetchAt: lastFetchAt, readme: readme, spec: spec, activeTasksOpen: activeTasksOpen, error: error,
-                   totalSeconds: totalSeconds, architecture: architecture, visibility: visibility)
+                   totalSeconds: totalSeconds, architecture: architecture, visibility: visibility, isTableProject: isTableProject)
     }
 }
 
@@ -172,10 +174,18 @@ public final class Store: Sendable {
                                arguments: [id, displayName, path, now, now])
             }
             if let identity {
+                let previousRemote = try String.fetchOne(db, sql: "SELECT remoteURL FROM projectIdentity WHERE projectId = ?", arguments: [id])
+                let remote = identity.remoteResolved ? identity.remoteURL.map(sanitizeRemoteURL) : previousRemote
+                if identity.remoteResolved && previousRemote != remote {
+                    try db.execute(sql: "DELETE FROM repoVisibility WHERE projectId = ?", arguments: [id])
+                }
                 try db.execute(sql: """
                     INSERT INTO projectIdentity (projectId, commonDir, rootCommits, remoteURL) VALUES (?, ?, ?, ?)
                     ON CONFLICT(projectId) DO UPDATE SET commonDir = excluded.commonDir, rootCommits = excluded.rootCommits, remoteURL = excluded.remoteURL
-                    """, arguments: [id, identity.commonDir, identity.rootCommits.sorted().joined(separator: ","), identity.remoteURL.map(sanitizeRemoteURL)])
+                    """, arguments: [id, identity.commonDir, identity.rootCommits.sorted().joined(separator: ","), remote])
+            } else {
+                try db.execute(sql: "DELETE FROM projectIdentity WHERE projectId = ?", arguments: [id])
+                try db.execute(sql: "DELETE FROM repoVisibility WHERE projectId = ?", arguments: [id])
             }
             return id
         }
@@ -209,12 +219,22 @@ public final class Store: Sendable {
                 let removedRoot = currentRoots.map { !inside($0) } ?? false
                 guard !exceptIds.contains(id), inside(underRoots) || removedRoot else { continue }
                 try db.execute(sql: "UPDATE project SET state = 'missing' WHERE id = ?", arguments: [id])
+                try db.execute(sql: "DELETE FROM repoVisibility WHERE projectId = ?", arguments: [id])
             }
         }
     }
 
     public func updateSummary(projectId: String, _ summary: String?) throws {
         try dbQueue.write { db in try db.execute(sql: "UPDATE project SET summary = ? WHERE id = ?", arguments: [summary, projectId]) }
+    }
+
+    public func updateTableMembership(projectIds: Set<String>, tablePath: String) throws {
+        try dbQueue.write { db in
+            try db.execute(sql: "UPDATE project SET projectTablePath = NULL WHERE projectTablePath = ?", arguments: [tablePath])
+            for id in projectIds {
+                try db.execute(sql: "UPDATE project SET projectTablePath = ? WHERE id = ?", arguments: [tablePath, id])
+            }
+        }
     }
 
     // MARK: Snapshots and per-scan facts
@@ -402,7 +422,8 @@ public final class Store: Sendable {
                     readme: decode(ReadmeDrift.self, "readme"), spec: decode(SpecHeadline.self, "spec"),
                     activeTasksOpen: row["activeTasksOpen"], error: row["error"], totalSeconds: total,
                     architecture: decode(ArchitectureDoc.self, "architecture"),
-                    visibility: (row["visibility"] as String?).flatMap(RepoVisibility.init(rawValue:))
+                    visibility: (row["visibility"] as String?).flatMap(RepoVisibility.init(rawValue:)),
+                    isTableProject: (row["projectTablePath"] as String?) != nil
                 )
             }
         }

@@ -88,6 +88,7 @@ public final class AppModel {
     @ObservationIgnored private let store: Store
     @ObservationIgnored private let home: URL
     @ObservationIgnored private let now: @Sendable () -> Date
+    @ObservationIgnored private var reloadGeneration = 0
     public var gap: TimeInterval { settings.activityGap }
 
     public init(store: Store, settings: AppSettings, coordinator: ScanCoordinator?, calendarSync: CalendarSync?,
@@ -132,6 +133,7 @@ public final class AppModel {
     // MARK: Loading
 
     public func reload() async {
+        let generation = beginReload()
         let store = self.store
         let settings = self.settings
         let home = self.home
@@ -148,7 +150,18 @@ public final class AppModel {
             let problems = checkSources(scanConfig(from: settings, home: home), vaultConfigured: settings.vaultRoot != nil)
             return (data, problems)
         }.value
-        switch loaded.0 {
+        finishReload(generation, data: loaded.0, problems: loaded.1)
+    }
+
+    func beginReload() -> Int {
+        reloadGeneration += 1
+        return reloadGeneration
+    }
+
+    /// Reloads overlap (scan end, settings change, timer); a slower older read must not replace a newer one.
+    func finishReload(_ generation: Int, data: Result<([ProjectRow], ActivityIndex), any Error>, problems: [SourceProblem]) {
+        guard generation == reloadGeneration else { return }
+        switch data {
         case .success(let data):
             rows = data.0
             activity = data.1
@@ -156,7 +169,7 @@ public final class AppModel {
         case .failure(let error):
             loadError = "Could not read projects from the database; showing the last loaded list: \(error)"
         }
-        sourceProblems = loaded.1
+        sourceProblems = problems
         isLoaded = true
     }
 

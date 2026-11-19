@@ -111,10 +111,11 @@ public func parseCodexHistoryLine(_ line: Data) -> LineOutcome<CodexHistoryEntry
 private func isCodexOwnerContent(_ text: String, hasImage: Bool) -> Bool {
     let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
     let excludedPrefixes = [
-        "# AGENTS.md", "<environment_context>", "<codex_internal_context>",
+        "# AGENTS.md", "<environment_context>",
         "<recommended_plugins>",
     ]
     return !isRelayedAgentText(text)
+        && text.range(of: #"^<(codex_internal_context|user_instructions)(?:\s|/?>)"#, options: .regularExpression) == nil
         && !excludedPrefixes.contains(where: { text.hasPrefix($0) })
         && (!text.isEmpty || hasImage)
 }

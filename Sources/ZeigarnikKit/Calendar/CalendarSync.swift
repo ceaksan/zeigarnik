@@ -26,6 +26,7 @@ public actor CalendarSync {
     public func reconcile() -> ReconcileSummary {
         var summary = ReconcileSummary(processed: 0, unresolved: 0)
         var blocked: Set<UUID> = []
+        if gateway.access() == .granted { try? store.requeueItemsAwaitingCalendarAccess() }
         for op in (try? store.pendingCalendarOps()) ?? [] {
             guard !blocked.contains(op.itemId), var item = try? store.scheduledItem(id: op.itemId) else { continue }
             if let pendingDetail = apply(op, to: &item) {
@@ -87,9 +88,9 @@ public actor CalendarSync {
             }
         }
         switch access {
-        case .denied:
+        case .denied, .writeOnly:
             item.syncState = .notInCalendar
-            item.syncDetail = "No calendar access"
+            item.syncDetail = access == .writeOnly ? "Calendar access is write-only; full access is needed" : "No calendar access"
             return nil
         case .notDetermined:
             return "Calendar access not requested yet"
@@ -124,7 +125,12 @@ public actor CalendarSync {
         do {
             let matches = try gateway.events(itemId: item.id, around: item.start)
             switch matches.count {
-            case 0: return .gone
+            case 0:
+                // A disabled account hides its calendars and events; only a readable target calendar makes "gone" conclusive.
+                guard let target = targetCalendarId(), gateway.calendars().contains(where: { $0.id == target }) else {
+                    return .inconclusive("The target calendar is not available")
+                }
+                return .gone
             case 1: return .found(matches[0])
             default: return .ambiguous
             }

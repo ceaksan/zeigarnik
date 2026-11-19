@@ -3,6 +3,8 @@ import ZeigarnikKit
 
 struct SidebarView: View {
     @Bindable var model: AppModel
+    /// Open Now reads herdr terminals; without herdr the row would only ever show "?".
+    var showOpenNow: Bool
 
     var body: some View {
         let counts = model.counts
@@ -10,7 +12,9 @@ struct SidebarView: View {
             Section("Views") {
                 row("★ Pinned", .pinned, counts)
                 row("All", .all, counts)
-                if counts[.openNow] == nil {
+                if !showOpenNow {
+                    EmptyView()
+                } else if counts[.openNow] == nil {
                     Text("Open Now").badge(Text("?")).help("Could not read herdr terminals").tag(SidebarSelection.filter(.openNow))
                 } else {
                     row("Open Now", .openNow, counts)

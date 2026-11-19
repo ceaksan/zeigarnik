@@ -78,4 +78,13 @@ struct GitInspectorTests {
         let repo = try await makeRepo()
         #expect(try await inspector.trackedFiles(repo) == ["README.md"])
     }
+
+    @Test func C7_historyPreservesNonASCIIPaths() async throws {
+        let repo = try await makeRepo()
+        let path = "orbit-\u{00e9}.swift"
+        try Data("let orbit = 1\n".utf8).write(to: repo.appendingPathComponent(path))
+        await runGit(repo, ["add", path])
+        await runGit(repo, ["commit", "-q", "-m", "synthetic path"])
+        #expect(try await inspector.history(repo).first?.files == [path])
+    }
 }

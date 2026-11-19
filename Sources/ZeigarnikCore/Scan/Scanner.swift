@@ -10,14 +10,28 @@ public struct ScanError: Sendable, Equatable, Codable {
     }
 }
 
+public struct ProjectRelink: Sendable, Equatable, Codable {
+    public let projectId: String
+    public let fromPath: String
+    public let toPath: String
+
+    public init(projectId: String, fromPath: String, toPath: String) {
+        self.projectId = projectId
+        self.fromPath = fromPath
+        self.toPath = toPath
+    }
+}
+
 public struct ScanReport: Sendable, Codable {
     public let startedAt: Date
     public let finishedAt: Date
     public let projects: Int
     public let errors: [ScanError]
     public let openNow: OpenNowState
+    public let relinks: [ProjectRelink]
 
-    public init(startedAt: Date, finishedAt: Date, projects: Int, errors: [ScanError], openNow: OpenNowState) {
+    public init(startedAt: Date, finishedAt: Date, projects: Int, errors: [ScanError], openNow: OpenNowState, relinks: [ProjectRelink] = []) {
+        self.relinks = relinks
         self.startedAt = startedAt
         self.finishedAt = finishedAt
         self.projects = projects
@@ -65,6 +79,7 @@ public actor ProjectScanner {
     public func scan(fetch: Bool) async -> ScanReport {
         let started = Date()
         var errors: [ScanError] = []
+        var relinks: [ProjectRelink] = []
         let fm = FileManager.default
         let inspector = GitInspector(runner: runner)
         let calendar = Calendar.current
@@ -152,6 +167,9 @@ public actor ProjectScanner {
             }
             do {
                 let id = try store.upsertProject(resolution: resolution, path: unit.main.path, displayName: name, identity: unit.identity)
+                if case .relinked(_, let fromPath) = resolution {
+                    relinks.append(ProjectRelink(projectId: id, fromPath: fromPath, toPath: unit.main.path))
+                }
                 seen.insert(id)
                 for checkout in unit.checkouts { mapperEntries.append((id: id, path: checkout.path)) }
                 try store.recordPaths(projectId: id, unit.checkouts.map(\.path))
@@ -162,6 +180,9 @@ public actor ProjectScanner {
         }
         do {
             if tableReadable {
+                let listedPaths = Set(tableEntries.map { $0.url.path })
+                let tableIds = Set(try store.projectPaths().filter { listedPaths.contains($0.path) }.map(\.id))
+                try store.updateTableMembership(projectIds: tableIds, tablePath: config.projectTableFile.resolvingSymlinksInPath().standardizedFileURL.path)
                 let completeRoots = discovery.enumeratedRoots.subtracting(discovery.incompleteRoots)
                 try store.markMissing(exceptIds: seen, underRoots: completeRoots.map(\.path), currentRoots: config.markRemovedRoots ? config.roots.map(\.path) : nil)
             }
@@ -174,18 +195,16 @@ public actor ProjectScanner {
             errors.append(ScanError(projectPath: config.vaultRoot.path, message: "Cannot read vault"))
         }
         let vaultRoot = config.vaultRoot
-        let chunkSize = max(1, config.fetchConcurrency)
-        for start in stride(from: 0, to: works.count, by: chunkSize) {
-            let chunk = Array(works[start..<min(start + chunkSize, works.count)])
-            let results = await withTaskGroup(of: WorkResult.self) { group in
-                for work in chunk {
+        await withTaskGroup(of: WorkResult.self) { group in
+            var pending = works.makeIterator()
+            for _ in 0..<min(max(1, config.fetchConcurrency), works.count) {
+                guard let work = pending.next() else { break }
+                group.addTask { await Self.inspect(work, inspector: inspector, fetch: fetch, vaultRoot: vaultRoot, calendar: calendar, today: today) }
+            }
+            while let result = await group.next() {
+                if let work = pending.next() {
                     group.addTask { await Self.inspect(work, inspector: inspector, fetch: fetch, vaultRoot: vaultRoot, calendar: calendar, today: today) }
                 }
-                var collected: [WorkResult] = []
-                for await result in group { collected.append(result) }
-                return collected
-            }
-            for result in results {
                 errors += result.errors
                 do {
                     try store.writeSnapshot(result.snapshot)
@@ -214,7 +233,7 @@ public actor ProjectScanner {
             await updateVisibility(works, probe: probe, now: started, errors: &errors)
         }
 
-        return ScanReport(startedAt: started, finishedAt: Date(), projects: seen.count, errors: errors, openNow: open)
+        return ScanReport(startedAt: started, finishedAt: Date(), projects: seen.count, errors: errors, openNow: open, relinks: relinks)
     }
 
     static func inspect(_ work: Work, inspector: GitInspector, fetch: Bool, vaultRoot: URL, calendar: Calendar, today: String) async -> WorkResult {
@@ -256,7 +275,7 @@ public actor ProjectScanner {
         if work.unit.identity == nil {
             readme = readmePath == nil ? .noReadme : .current
         } else {
-            readme = historyFailed ? nil : readmeDrift(history: history, readmePath: readmePath)
+            readme = historyFailed ? nil : await inspector.readmeState(main, history: history, readmePath: readmePath)
         }
         let architecturePath = findArchitectureDoc(in: tracked)
             ?? ["ARCHITECTURE.md", "architecture.md", "docs/architecture.md"].first { fm.fileExists(atPath: main.appendingPathComponent($0).path) }
@@ -292,6 +311,7 @@ public actor ProjectScanner {
         let cached = (try? store.visibilityChecks()) ?? [:]
         var due: [(id: String, repo: RemoteRepo)] = []
         for work in works {
+            if work.unit.identity?.remoteResolved == false { continue }
             guard let repo = work.unit.identity?.remoteURL.flatMap(parseRemote) else {
                 if cached[work.projectId] != nil { try? store.writeVisibility(projectId: work.projectId, nil) }
                 continue
@@ -332,14 +352,20 @@ public actor ProjectScanner {
         }
         do {
             var previous = try store.cursor(for: url.path)
+            // Parsing goes through Foundation (JSONSerialization, bridged strings), whose temporaries are autoreleased.
+            // Without a pool per batch they pile up across every log file, and memory grows with the total log size.
             while true {
-                let read = try readAppended(url, after: previous, maxBytes: config.ingestBatchBytes)
-                if read.lines.isEmpty && read.cursor == previous { return }
-                let parsed = transform(read.lines)
-                malformed += parsed.malformed
-                try store.ingest(IngestBatch(messages: parsed.messages, sessions: parsed.sessions, codexHeaders: parsed.headers, cursor: (path: url.path, cursor: read.cursor)))
-                if read.lines.isEmpty || read.cursor.offset >= read.cursor.size { return }
-                previous = read.cursor
+                let done = try autoreleasepool { () throws -> Bool in
+                    let read = try readAppended(url, after: previous, maxBytes: config.ingestBatchBytes)
+                    if read.lines.isEmpty && read.cursor == previous { return true }
+                    let parsed = transform(read.lines)
+                    malformed += parsed.malformed
+                    try store.ingest(IngestBatch(messages: parsed.messages, sessions: parsed.sessions, codexHeaders: parsed.headers, cursor: (path: url.path, cursor: read.cursor)))
+                    if read.lines.isEmpty || read.cursor.offset >= read.cursor.size { return true }
+                    previous = read.cursor
+                    return false
+                }
+                if done { return }
             }
         } catch {
             errors.append(ScanError(projectPath: url.path, message: "Cannot ingest: \(error.localizedDescription)"))

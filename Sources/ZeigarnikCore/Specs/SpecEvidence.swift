@@ -126,12 +126,12 @@ public func specStage(declared: String?, plan: PlanEvidence?, override: OwnerSpe
     case .done:
         return .done
     case .notDone:
-        guard let plan else { return .design }
+        guard let plan, plan.denominator > 0 else { return .design }
         return .inProgress(done: plan.done, total: plan.denominator, external: plan.external)
     case nil:
         break
     }
-    guard let plan else { return .design }
+    guard let plan, plan.denominator > 0 else { return .design }
     if plan.denominator > 0, plan.done == plan.denominator, plan.external == 0 { return .done }
     if classifyStatus(declared) == .completion { return .declaredDone(done: plan.done, total: plan.denominator) }
     return .inProgress(done: plan.done, total: plan.denominator, external: plan.external)

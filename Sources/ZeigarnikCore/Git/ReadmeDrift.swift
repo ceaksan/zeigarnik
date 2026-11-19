@@ -13,13 +13,14 @@ public func findReadme(in files: Set<String>) -> String? {
     return candidates.sorted().first
 }
 
-public func readmeDrift(history: [CommitRecord], readmePath: String?, minCommits: Int = 3) -> ReadmeDrift {
+public func readmeDrift(history: [CommitRecord], readmePath: String?, minCommits: Int = 3, unchangedManifests: Set<String> = []) -> ReadmeDrift {
     guard let readmePath else { return .noReadme }
     let since = history.prefix { !$0.files.contains(readmePath) }
     var codeFiles = Set<String>()
     var manifestChanged = false
     for commit in since {
         for file in commit.files {
+            if unchangedManifests.contains(file) { continue }
             if manifestFileNames.contains((file as NSString).lastPathComponent) { manifestChanged = true }
             if !file.hasPrefix("docs/") && !file.lowercased().hasSuffix(".md") { codeFiles.insert(file) }
         }

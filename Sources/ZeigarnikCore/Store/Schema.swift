@@ -67,6 +67,9 @@ extension Store {
                   visibility TEXT NOT NULL, checkedAt REAL NOT NULL)
                 """)
         }
+        migrator.registerMigration("v6-project-table") { db in
+            try db.execute(sql: "ALTER TABLE project ADD COLUMN projectTablePath TEXT")
+        }
         return migrator
     }
 }

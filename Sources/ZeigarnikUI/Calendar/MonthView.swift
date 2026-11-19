@@ -61,6 +61,10 @@ struct DayCell: View {
         let slices = model.activity.slices(day: day.day)
         let projects = slices.filter { if case .project = $0.owner { return true } else { return false } }
         let total = model.activity.dayTotal(day.day)
+        let otherSeconds = slices.reduce(0.0) { sum, slice in
+            if case .other = slice.owner { return sum + slice.seconds }
+            return sum
+        }
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline) {
                 if total > 0 { Text(Format.duration(total)).font(Theme.dayTotal).foregroundStyle(Theme.muted) }
@@ -77,6 +81,9 @@ struct DayCell: View {
             }
             if projects.count > 3 {
                 Text("+\(projects.count - 3)").font(Theme.chip).foregroundStyle(Theme.muted)
+            } else if otherSeconds > 0 {
+                // Time outside every project still counts in the day total; name it so the total is explained.
+                Text("Other \(Format.duration(otherSeconds))").font(Theme.chip).foregroundStyle(Theme.muted).lineLimit(1)
             }
             ForEach(notes.prefix(1)) { note in
                 NoteMarker("\(model.displayName(note.projectId)): \(note.text)")

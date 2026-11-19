@@ -139,6 +139,21 @@ struct ScannerTests {
         #expect(report.openNow == .known([.project(alpha.id)]))
     }
 
+    @Test func C5_fetchPoolRefillsBeforeSlowestRepoFinishes() async throws {
+        let world = try await makeWorld()
+        await runGit(world.root.appendingPathComponent("02_Products/gamma"), ["init", "-q"])
+        var config = world.config
+        config.fetchConcurrency = 2
+        let runner = StaggeredFetchRunner(base: world.runner)
+        _ = await ProjectScanner(config: config, store: world.store, runner: runner).scan(fetch: true)
+        let events = await runner.events
+        let thirdStart = try #require(events.firstIndex(of: "start3"))
+        let firstFinish = try #require(events.firstIndex(of: "end1"))
+        #expect(thirdStart < firstFinish)
+        #expect(await runner.peak == 2)
+        #expect(events.filter { $0.hasPrefix("start") }.count == 3)
+    }
+
     @Test func historyWinsOverTranscriptForSameSession() async throws {
         let world = try await makeWorld()
         _ = await world.scanner().scan(fetch: false)
@@ -147,12 +162,59 @@ struct ScannerTests {
         #expect(beta.lastActivityAgent == .claude)
     }
 
+    @Test func C9_scanNeverPersistsMessageTextIncludingWAL() async throws {
+        let world = try await makeWorld()
+        let marker = "SYNTHETIC_PRIVATE_PROMPT_" + UUID().uuidString
+        let paths = [
+            ".claude/history.jsonl", ".claude/projects/-beta/c1.jsonl",
+            ".codex/history.jsonl", ".codex/sessions/2026/11/18/rollout-2026-11-18T10-00-00-x1.jsonl",
+        ]
+        for path in paths {
+            let url = world.base.appendingPathComponent(path)
+            let text = try String(contentsOf: url, encoding: .utf8)
+                .replacingOccurrences(of: "Synthetic owner prompt.", with: marker)
+            #expect(text.contains(marker))
+            try world.write(url, text)
+        }
+        let dbURL = world.base.appendingPathComponent("privacy.sqlite")
+        let store = try Store(path: dbURL.path)
+        let report = await ProjectScanner(config: world.config, store: store, runner: world.runner).scan(fetch: false)
+        #expect(report.errors.isEmpty)
+        #expect(try store.messageCount() == 8)
+        let messages = try store.effectiveMessages()
+        #expect(messages.filter { $0.message.agent == .claude }.count == 2)
+        #expect(messages.filter { $0.message.agent == .codex }.count == 2)
+        let markerBytes = Data(marker.utf8)
+        let walURL = URL(fileURLWithPath: dbURL.path + "-wal")
+        #expect(try Data(contentsOf: walURL).count > 0)
+        for suffix in ["", "-wal", "-shm"] {
+            let bytes = try Data(contentsOf: URL(fileURLWithPath: dbURL.path + suffix))
+            #expect(bytes.range(of: markerBytes) == nil)
+        }
+        try store.checkpoint()
+        #expect(try Data(contentsOf: dbURL).range(of: markerBytes) == nil)
+    }
+
     @Test func tableProjectWithoutGitIsListed() async throws {
         let world = try await makeWorld()
         _ = await world.scanner().scan(fetch: false)
         let gamma = try #require(try world.store.projectRows(today: today, gap: 900).first { $0.displayName == "Gamma" })
         #expect(gamma.status == nil)
         #expect(gamma.state == .active)
+    }
+
+    @Test func C3_sharedNotesHonorStoredNotDoneOverride() async throws {
+        let world = try await makeWorld()
+        let path = "SHARED_TASK_NOTES.md"
+        try world.write(world.root.appendingPathComponent("beta/" + path), "# Orbit notes\n- [x] Synthetic task\n")
+        _ = await world.scanner().scan(fetch: false)
+        let before = try #require(try world.store.projectRows(today: today, gap: 900).first { $0.displayName == "Beta" })
+        #expect(before.spec?.lastDone?.stage == .done)
+        try world.store.setSpecOverride(projectId: before.id, specPath: path, .notDone, note: nil)
+        _ = await world.scanner().scan(fetch: false)
+        let after = try #require(try world.store.projectRows(today: today, gap: 900).first { $0.id == before.id })
+        #expect(after.spec?.current?.stage == .inProgress(done: 1, total: 1, external: 0))
+        #expect(after.spec?.lastDone == nil)
     }
 
     @Test func rescanIngestsOnlyAppendedLines() async throws {
@@ -186,6 +248,34 @@ struct ScannerTests {
         let moved = try #require(try world.store.projectRows(today: today, gap: 900).first { $0.id == beta.id })
         #expect(moved.path.hasSuffix("04_Analyses/beta-moved"))
         #expect(moved.state == .active)
+    }
+
+    @Test func C10_scanReportsRelinkOnceWithOldAndNewPaths() async throws {
+        let world = try await makeWorld()
+        _ = await world.scanner().scan(fetch: false)
+        let before = try #require(try world.store.knownProjects().first { $0.path.hasSuffix("/beta") })
+        let destination = world.root.appendingPathComponent("harbor")
+        try FileManager.default.moveItem(at: URL(fileURLWithPath: before.path), to: destination)
+        let report = await world.scanner().scan(fetch: false)
+        #expect(report.relinks == [ProjectRelink(projectId: before.id, fromPath: before.path, toPath: destination.path)])
+        let decoded = try JSONDecoder().decode(ScanReport.self, from: JSONEncoder().encode(report))
+        #expect(decoded.relinks == report.relinks)
+        #expect(await world.scanner().scan(fetch: false).relinks.isEmpty)
+    }
+
+    @Test func C10_tableMembershipPersistsAndClearsWhenUnlisted() async throws {
+        let world = try await makeWorld()
+        let path = world.base.appendingPathComponent("membership.sqlite").path
+        let store = try Store(path: path)
+        _ = await ProjectScanner(config: world.config, store: store, runner: world.runner).scan(fetch: false)
+        let reopened = try Store(path: path)
+        let rows = try reopened.projectRows(today: today, gap: 900)
+        #expect(rows.count == 3)
+        #expect(rows.allSatisfy { $0.isTableProject })
+        #expect(rows.allSatisfy { $0.withPinned(true).isTableProject })
+        try world.write(world.root.appendingPathComponent("CLAUDE.md"), "# Projects\n")
+        _ = await ProjectScanner(config: world.config, store: reopened, runner: world.runner).scan(fetch: false)
+        #expect(try reopened.projectRows(today: today, gap: 900).allSatisfy { !$0.isTableProject })
     }
 
     @Test func siblingWorktreeDirtAndActivityCountForMain() async throws {
@@ -394,6 +484,69 @@ struct ScannerTests {
         #expect(await probe.asked.items.isEmpty)
         #expect(try world.store.projectRows(today: today, gap: 900).allSatisfy { $0.visibility == nil })
     }
+
+    @Test func C13_transientRemoteFailurePreservesVisibilityAndIdentity() async throws {
+        let world = try await makeWorld()
+        let repo = world.root.appendingPathComponent("beta")
+        await runGit(repo, ["remote", "add", "origin", "https://github.com/orbit/lumen.git"])
+        var config = world.config
+        config.checkVisibility = true
+        let probe = CountingProbe(answer: .public)
+        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        let before = try #require(try world.store.knownProjects().first { $0.path == repo.path })
+        _ = await ProjectScanner(config: config, store: world.store, runner: FailingRemoteRunner(base: world.runner), visibilityProbe: probe).scan(fetch: false)
+        #expect(try world.store.visibilityChecks()[before.id]?.visibility == .public)
+        #expect(try world.store.knownProjects().first { $0.id == before.id }?.identity?.remoteURL == before.identity?.remoteURL)
+        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        #expect(await probe.asked.items.count == 1)
+    }
+
+    @Test func C13_definiteRemoteChangeInvalidatesEvenWithProbeDisabled() async throws {
+        let world = try await makeWorld()
+        let repo = world.root.appendingPathComponent("beta")
+        await runGit(repo, ["remote", "add", "origin", "https://github.com/orbit/lumen.git"])
+        var config = world.config
+        config.checkVisibility = true
+        let probe = CountingProbe(answer: .public)
+        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        let id = try #require(try world.store.knownProjects().first { $0.path == repo.path }?.id)
+        await runGit(repo, ["remote", "set-url", "origin", "https://github.com/orbit/harbor.git"])
+        config.checkVisibility = false
+        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        #expect(try world.store.visibilityChecks()[id] == nil)
+        config.checkVisibility = true
+        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        #expect(await probe.asked.items == [RemoteRepo(host: "github.com", path: "orbit/lumen"), RemoteRepo(host: "github.com", path: "orbit/harbor")])
+        await runGit(repo, ["remote", "remove", "origin"])
+        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        #expect(try world.store.visibilityChecks()[id] == nil)
+    }
+
+    @Test func C13_missingRepoDropsCachedVisibility() async throws {
+        let world = try await makeWorld()
+        let repo = world.root.appendingPathComponent("beta")
+        await runGit(repo, ["remote", "add", "origin", "https://github.com/orbit/lumen.git"])
+        var config = world.config
+        config.checkVisibility = true
+        let probe = CountingProbe(answer: .public)
+        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        let id = try #require(try world.store.knownProjects().first { $0.path == repo.path }?.id)
+        try FileManager.default.removeItem(at: repo)
+        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        #expect(try world.store.visibilityChecks()[id] == nil)
+        #expect(try world.store.knownProjects().first { $0.id == id }?.state == .missing)
+    }
+}
+
+private struct FailingRemoteRunner: CommandRunning {
+    let base: HcStubRunner
+
+    func run(_ executable: String, _ arguments: [String], cwd: URL?, environment: [String: String], timeout: Duration) async -> CommandResult {
+        if arguments.contains("config") && arguments.contains("remote.origin.url") {
+            return CommandResult(exitCode: 128, stdout: Data(), stderr: "Synthetic transient failure", timedOut: false)
+        }
+        return await base.run(executable, arguments, cwd: cwd, environment: environment, timeout: timeout)
+    }
 }
 
 private struct CountingProbe: VisibilityProbing {
@@ -402,5 +555,44 @@ private struct CountingProbe: VisibilityProbing {
     func visibility(of repo: RemoteRepo) async -> RepoVisibility {
         await asked.add(repo)
         return answer
+    }
+}
+
+private actor StaggeredFetchRunner: CommandRunning {
+    let base: HcStubRunner
+    var events: [String] = []
+    var peak = 0
+    private var started = 0
+    private var active = 0
+    private var held: CheckedContinuation<Void, Never>?
+
+    init(base: HcStubRunner) { self.base = base }
+
+    private func releaseFirst() { held?.resume(); held = nil }
+
+    func run(_ executable: String, _ arguments: [String], cwd: URL?, environment: [String: String], timeout: Duration) async -> CommandResult {
+        if arguments.last == "remote" { return CommandResult(exitCode: 0, stdout: Data("origin\n".utf8), stderr: "", timedOut: false) }
+        guard arguments.contains("fetch") else {
+            return await base.run(executable, arguments, cwd: cwd, environment: environment, timeout: timeout)
+        }
+        started += 1
+        let index = started
+        active += 1
+        peak = max(peak, active)
+        events.append("start\(index)")
+        if index == 1 {
+            let fallback = Task {
+                try? await Task.sleep(for: .seconds(2))
+                releaseFirst()
+            }
+            await withCheckedContinuation { held = $0 }
+            fallback.cancel()
+        } else {
+            if index == 3 { releaseFirst() }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        active -= 1
+        events.append("end\(index)")
+        return CommandResult(exitCode: 0, stdout: Data(), stderr: "", timedOut: false)
     }
 }

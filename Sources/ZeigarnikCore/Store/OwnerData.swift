@@ -210,6 +210,24 @@ extension Store {
     }
 
     /// Items whose event should be checked against the calendar: wanted in the calendar, not deleted, no pending operation.
+    /// Items the owner wanted in the calendar while access was denied: queued for creation once access is granted.
+    /// One transaction, touching only sync columns, so an edit made at the same moment is not overwritten.
+    @discardableResult
+    public func requeueItemsAwaitingCalendarAccess() throws -> Int {
+        try dbQueue.write { db in
+            let ids = try String.fetchAll(db, sql: """
+                SELECT id FROM scheduledItem s
+                WHERE deletedAt IS NULL AND wantsCalendar = 1 AND syncState = 'notInCalendar'
+                  AND NOT EXISTS (SELECT 1 FROM calendarOp o WHERE o.itemId = s.id)
+                """).compactMap(UUID.init(uuidString:))
+            for id in ids {
+                try db.execute(sql: "UPDATE scheduledItem SET syncState = 'pending', syncDetail = NULL WHERE id = ?", arguments: [id.uuidString])
+                try Self.enqueue(db, id, .create)
+            }
+            return ids.count
+        }
+    }
+
     public func calendarItemsToRefresh() throws -> [ScheduledItem] {
         try dbQueue.read { db in
             try Row.fetchAll(db, sql: """

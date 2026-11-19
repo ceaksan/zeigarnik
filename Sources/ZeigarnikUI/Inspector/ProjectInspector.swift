@@ -82,6 +82,7 @@ struct ProjectInspector: View {
             ("README", Format.readme(row.readme)),
             ("Architecture", Format.architecture(row.architecture, calendar: cal)),
             ("Visibility", Format.visibility(row.visibility)),
+            ("Source", row.isTableProject ? "Project table" : "Found in a scan folder"),
         ].filter { key, _ in
             (key != "README" || model.settings.checkReadme) && (key != "Architecture" || model.settings.checkArchitecture)
                 && (key != "Visibility" || model.settings.checkVisibility)

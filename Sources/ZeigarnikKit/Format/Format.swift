@@ -21,10 +21,7 @@ public enum Format {
     }
 
     public static func time(_ date: Date, calendar: Calendar) -> String {
-        let f = formatter(nil, calendar)
-        f.dateStyle = .none
-        f.timeStyle = .short
-        return f.string(from: date)
+        formatter(nil, calendar, timeStyle: .short).string(from: date)
     }
 
     public static func dayMonthTime(_ date: Date, calendar: Calendar) -> String {
@@ -136,15 +133,16 @@ public enum Format {
     }
 
     /// Table cells format every row on each render; building a DateFormatter per call made sidebar selection visibly slow.
-    static func formatter(_ pattern: String?, _ calendar: Calendar) -> DateFormatter {
+    /// A cached formatter is shared across callers, so every setting is part of its key and nothing changes it after creation.
+    static func formatter(_ pattern: String?, _ calendar: Calendar, timeStyle: DateFormatter.Style = .none) -> DateFormatter {
         let locale = calendar.locale ?? .autoupdatingCurrent
-        let key = [pattern ?? "", locale.identifier, calendar.timeZone.identifier, "\(calendar.identifier)", "\(calendar.firstWeekday)"].joined(separator: "|")
+        let key = [pattern ?? "", "\(timeStyle.rawValue)", locale.identifier, calendar.timeZone.identifier, "\(calendar.identifier)", "\(calendar.firstWeekday)"].joined(separator: "|")
         return formatterCache.value(key) {
             let f = DateFormatter()
             f.calendar = calendar
             f.timeZone = calendar.timeZone
             f.locale = locale
-            if let pattern { f.dateFormat = pattern }
+            if let pattern { f.dateFormat = pattern } else { f.dateStyle = .none; f.timeStyle = timeStyle }
             return f
         }
     }

@@ -27,7 +27,8 @@ final class FakeGateway: CalendarGateway, @unchecked Sendable {
 
     func access() -> CalendarAccess { lock.withLock { accessState } }
     func requestAccess() async -> Bool { true }
-    func calendars() -> [CalendarInfo] { [CalendarInfo(id: "cal", title: "Work", sourceTitle: "iCloud")] }
+    var calendarList = [CalendarInfo(id: "cal", title: "Work", sourceTitle: "iCloud")]
+    func calendars() -> [CalendarInfo] { lock.withLock { calendarList } }
 
     func event(identifier: String) throws -> CalendarEvent? {
         fire(&duringLookup)
@@ -156,18 +157,52 @@ final class FakeGateway: CalendarGateway, @unchecked Sendable {
         #expect(gateway.creates == 0)
     }
 
-    @Test func laterGrantDoesNotDuplicate() async throws {
+    @Test func laterGrantAddsTheWaitingItemOnce() async throws {
         gateway.accessState = .denied
         var item = try save()
         _ = await sync().reconcile()
         gateway.accessState = .granted
         _ = await sync().reconcile()
-        #expect(gateway.creates == 0)
+        #expect(gateway.creates == 1)
+        #expect(try stored(item.id).syncState == .synced)
+        _ = await sync().reconcile()
         item.title = "orbit: UI"
         try store.saveScheduledItem(item)
         _ = await sync().reconcile()
         #expect(gateway.creates == 1)
+        #expect(gateway.events.values.map(\.title) == ["orbit: UI"])
+    }
+
+    @Test func laterGrantLeavesItemsTheOwnerKeptOutOfTheCalendar() async throws {
+        gateway.accessState = .denied
+        let item = ScheduledItem(id: UUID(), projectId: project, title: "orbit: local only", start: start, duration: 3600, wantsCalendar: false,
+                                 eventIdentifier: nil, syncState: .pending, syncDetail: nil, deletedAt: nil)
+        try store.saveScheduledItem(item)
+        _ = await sync().reconcile()
+        gateway.accessState = .granted
+        _ = await sync().reconcile()
+        #expect(gateway.creates == 0)
+        #expect(try stored(item.id).syncState == .notInCalendar)
+    }
+
+    @Test func disabledCalendarAccountIsNotReadAsGone() async throws {
+        let item = try save()
+        _ = await sync().reconcile()
+        gateway.events = [:]
+        gateway.calendarList = []
+        _ = await sync().reconcile()
         #expect(try stored(item.id).syncState == .synced)
+        #expect(try stored(item.id).eventIdentifier == "E1")
+        #expect(gateway.creates == 1)
+    }
+
+    @Test func writeOnlyAccessIsNamedNotTreatedAsDenied() async throws {
+        gateway.accessState = .writeOnly
+        let item = try save()
+        _ = await sync().reconcile()
+        #expect(try stored(item.id).syncState == .notInCalendar)
+        #expect(try stored(item.id).syncDetail?.contains("write-only") == true)
+        #expect(gateway.creates == 0)
     }
 
     @Test func eventMovedInCalendarUpdatesItemTime() async throws {

@@ -3,6 +3,8 @@ import Foundation
 
 public final class EventKitGateway: CalendarGateway, @unchecked Sendable {
     private let store = EKEventStore()
+    /// The calendar sync actor and the main actor both call in; EKEventStore work is serialized here.
+    private let lock = NSLock()
 
     public enum GatewayError: Error { case calendarNotFound, eventNotFound }
 
@@ -13,6 +15,7 @@ public final class EventKitGateway: CalendarGateway, @unchecked Sendable {
     public func access() -> CalendarAccess {
         switch EKEventStore.authorizationStatus(for: .event) {
         case .fullAccess: .granted
+        case .writeOnly: .writeOnly
         case .notDetermined: .notDetermined
         default: .denied
         }
@@ -23,39 +26,49 @@ public final class EventKitGateway: CalendarGateway, @unchecked Sendable {
     }
 
     public func calendars() -> [CalendarInfo] {
-        store.calendars(for: .event).filter(\.allowsContentModifications)
-            .map { CalendarInfo(id: $0.calendarIdentifier, title: $0.title, sourceTitle: $0.source.title) }
-            .sorted { ($0.sourceTitle, $0.title) < ($1.sourceTitle, $1.title) }
+        lock.withLock {
+            store.calendars(for: .event).filter(\.allowsContentModifications)
+                .map { CalendarInfo(id: $0.calendarIdentifier, title: $0.title, sourceTitle: $0.source.title) }
+                .sorted { ($0.sourceTitle, $0.title) < ($1.sourceTitle, $1.title) }
+        }
     }
 
     public func event(identifier: String) throws -> CalendarEvent? {
-        store.event(withIdentifier: identifier).map(Self.convert)
+        lock.withLock { store.event(withIdentifier: identifier).map(Self.convert) }
     }
 
     public func events(itemId: UUID, around: Date) throws -> [CalendarEvent] {
         let year: TimeInterval = 365 * 86_400
-        let predicate = store.predicateForEvents(withStart: around.addingTimeInterval(-year), end: around.addingTimeInterval(year), calendars: nil)
-        return store.events(matching: predicate).filter { Self.itemId(of: $0) == itemId }.map(Self.convert)
+        return lock.withLock {
+            let predicate = store.predicateForEvents(withStart: around.addingTimeInterval(-year), end: around.addingTimeInterval(year), calendars: nil)
+            return store.events(matching: predicate).filter { Self.itemId(of: $0) == itemId }.map(Self.convert)
+        }
     }
 
     public func create(_ draft: EventDraft, calendarId: String) throws -> String {
-        guard let calendar = store.calendar(withIdentifier: calendarId) else { throw GatewayError.calendarNotFound }
-        let event = EKEvent(eventStore: store)
-        event.calendar = calendar
-        Self.apply(draft, to: event)
-        try store.save(event, span: .thisEvent, commit: true)
-        return event.eventIdentifier
+        try lock.withLock {
+            guard let calendar = store.calendar(withIdentifier: calendarId) else { throw GatewayError.calendarNotFound }
+            let event = EKEvent(eventStore: store)
+            event.calendar = calendar
+            Self.apply(draft, to: event)
+            try store.save(event, span: .thisEvent, commit: true)
+            return event.eventIdentifier
+        }
     }
 
     public func update(identifier: String, with draft: EventDraft) throws {
-        guard let event = store.event(withIdentifier: identifier) else { throw GatewayError.eventNotFound }
-        Self.apply(draft, to: event)
-        try store.save(event, span: .thisEvent, commit: true)
+        try lock.withLock {
+            guard let event = store.event(withIdentifier: identifier) else { throw GatewayError.eventNotFound }
+            Self.apply(draft, to: event)
+            try store.save(event, span: .thisEvent, commit: true)
+        }
     }
 
     public func remove(identifier: String) throws {
-        guard let event = store.event(withIdentifier: identifier) else { return }
-        try store.remove(event, span: .thisEvent, commit: true)
+        try lock.withLock {
+            guard let event = store.event(withIdentifier: identifier) else { return }
+            try store.remove(event, span: .thisEvent, commit: true)
+        }
     }
 
     private static func apply(_ draft: EventDraft, to event: EKEvent) {
