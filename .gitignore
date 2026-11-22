@@ -8,3 +8,7 @@ build/
 
 # Design specs and plans stay local; they are not part of the public repository.
 docs/superpowers/
+
+# design template tools
+design/node_modules/
+design/.venv/

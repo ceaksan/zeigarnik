@@ -2,10 +2,10 @@
 name: Zeigarnik # project.yml PRODUCT_NAME (no CFBundleDisplayName; window title "Zeigarnik" in ZeigarnikScenes.swift)
 company: ceaksan # decided by Ceair 2026-11-21
 brand: Zeigarnik # decided by Ceair 2026-11-21
-design_version: 1.0.0
+design_version: 1.2.0
 product_version: 0.2.1 # project.yml MARKETING_VERSION (matches zeigarnikVersion in AgentService.swift and tag v0.2.1)
-source_commit: 017819a
-updated: 2026-11-21
+source_commit: 95ac6bf
+updated: 2026-11-22
 template: design/template.fig
 status: implemented
 schemes: [light, dark] # NSColor dynamicProvider in Theme.swift; Appearance setting System, Light, Dark
@@ -33,7 +33,7 @@ colors:
   star: { light: "#f5a524", dark: "#f5a524" }
   today: { light: "#ff3b30", dark: "#ff3b30" }
   onAccent: "Color.white" # SwiftUI constant, same in both appearances
-  specTrack: "Color.gray.opacity(0.2)" # SwiftUI system gray at 20%
+  specTrack: "line" # Theme.swift:31 specTrack = line since 2026-11-22 (Ceair); was Color.gray.opacity(0.2), a system gray at 20%
   derived: # computed in views, not separate tokens
     hoverTint: "text at 5% opacity" # NoteCardLayout.hoverTint
     sparklineBar: "accent at 75% opacity"
@@ -142,7 +142,7 @@ Every token in `Theme` is a dynamic `NSColor` that picks the light or dark value
 | Destructive | `danger` | Tint of the confirming Delete button and the Delete button in the schedule sheet. |
 | Markers | `live`, `star`, `today` | `live`: Open Now dot. `star`: pin star. `today`: today's day number capsule. |
 | Project chips | `chips[0...5]` | Calendar project chips; the index is a stable hash of the project id, so a project keeps its color across launches (`Sources/ZeigarnikKit/List/ColorIndex.swift:1-9`). |
-| Spec track | `specTrack` | Unfilled part of the spec bar. |
+| Spec track | `specTrack` | Unfilled part of the spec bar. Equals `line` since 2026-11-22 (`Theme.swift:31`). |
 
 `accent`, `live`, `star` and `today` have the same value in both appearances. Prominent buttons (`.borderedProminent`) use the system tint, not `Theme.accent`.
 
@@ -300,11 +300,31 @@ open build/Build/Products/Release/Zeigarnik.app
 
 For captures on a separate data set, CLAUDE.md documents a Debug build with its own `PRODUCT_BUNDLE_IDENTIFIER`, launched with `--home <absolute dir>` and `--settings-json '<AppSettings JSON>'`. DEBUG builds also accept `--gallery`, `--menubar-preview`, `--settings` (`Sources/ZeigarnikUI/ZeigarnikScenes.swift:64-79`), `--select <display name>` and `--day <yyyy-MM-dd>` (`Sources/ZeigarnikUI/Window/RootView.swift:45-53`). Fixtures must be synthetic (CLAUDE.md).
 
-`design/template.fig` (OpenPencil) is to hold the screen states listed above in light and dark appearance, the color token collection with both modes, the shared components and the behavior rules. When a screen or token changes in code, update the template from new captures of the same states.
+Design template (Level 1 since design 1.1.0). Tools live in `design/`: `package.json` pins `@open-pencil/cli`, `@open-pencil/core` and `@open-pencil/scene-graph` at exactly 0.16.0 (`bun.lock` committed, `design/node_modules/` and `design/.venv/` in `.gitignore`); `requirements.txt` pins `fonttools` for `font-outlines.py`. `tokens.mjs` reads this frontmatter and takes every token from the source line it cites (`path:line` plus a pattern that must match that line; light and dark both from the `color(light:dark:)` call); `components.mjs` draws the components from those tokens with copy from `DesignGallery.swift`; `font-outlines.py` extracts SF Pro Text glyph outlines from `/System/Library/Fonts` (macOS only), because OpenPencil cannot load the system font by name.
+
+Commands, run from the repository root with Node 22 (tested with v22.23.0) and Bun; none of them builds the app:
+
+```bash
+cd design && bun install && cd ..
+python3 -m venv design/.venv && design/.venv/bin/python -m pip install -r design/requirements.txt
+node design/generate-template.mjs                          # overwrites design/template.fig (Cover, Tokens, Components)
+node design/generate-template.mjs "$TMPDIR/template.fig"   # or write elsewhere
+node design/verify-template.mjs                            # reopens design/template.fig from disk, exits non-zero on any mismatch
+```
+
+The generator uses `design/.venv/bin/python` when it exists, else `python3` (override with `PYTHON=`). The verifier checks the pinned package versions, page order, Cover values against this frontmatter with page links, one collection `Zeigarnik` with modes `Light` and `Dark`, every variable name, type and per-mode value against the line it cites, the frontmatter light and dark hex colors (including `chips`) against `Theme.swift`, every swatch binding and literal, every solid fill and stroke of every main component bound to a variable with the same color, every node opacity equal to 1 or an `Opacity /` token, glyph outlines on every component text, one Dark instance per main component whose bound paints resolve to the Dark values (OpenPencil 0.16.0 does not save `variableModes` on an instance, so the mode sits on the `Mode / Dark` lane around it), and the version label on every page after Cover. A token whose line moved fails until `design/tokens.mjs` points at the new line.
+
+`design/template.fig` contents (Level 1): Cover; Tokens (collection `Zeigarnik`, modes `Light` and `Dark`, 64 variables: 23 colors with swatches per mode, literal, hex and `path:line`, then Opacity, Type, Radius, Spacing and Size groups); Components (20 main components in Light, each with a Dark instance: Tag neutral, warn and ok, ProjectChip for color indexes 0 to 5, ScheduledChip, NoteMarker, LiveDot, SectionHeader, KeyValueGrid, NoteCard scheduled with badge, plain and interactive hover, Sparkline, Banner warn and neutral). Pages after Cover carry the label `Zeigarnik · design <version> · product <version> · <page>` bound to `side`, `line` and `text`.
+
+Target for later levels (unchanged): `design/template.fig` (OpenPencil) is to hold the screen states listed above in light and dark appearance, the color token collection with both modes, the shared components and the behavior rules. When a screen or token changes in code, update the template from new captures of the same states.
 
 ## Versioning
 
 `design_version` versions this document and `design/template.fig` together; `product_version` is the app release they describe (project.yml `MARKETING_VERSION`). Bump major for navigation or layout changes, minor for new states, components or tokens, patch for corrections. A new app release updates `product_version`, `source_commit` and `updated`.
+
+- 1.0.0 (2026-11-21, `017819a`): DESIGN.md and Level 0 template (Cover only).
+- 1.1.0 (2026-11-22, `95ac6bf`): Level 1 template (Tokens and Components pages) with generator and verifier in `design/`. Minor bump: new tokens and components in the template; no rule or value in this file changed.
+- 1.2.0 (2026-11-22): SpecBar drawn in three gallery states (9/11, 12/12, 0/0) with three new size and radius tokens. Code change decided by Ceair: `Theme.specTrack` is now `line` instead of `Color.gray.opacity(0.2)` (`Theme.swift:31`), so the track has a repository value in both appearances. Minor bump: new tokens and components. Not built yet; the visual change needs a Debug build to confirm.
 
 ## Anti-patterns
 
@@ -320,7 +340,7 @@ Each is backed by a code comment or an existing choice.
 ## Known gaps
 
 - **Brand**: not stated anywhere in the repository. Evidence points two ways: bundle prefix `com.ceaksan`, GitHub `ceaksan/zeigarnik`, About links to ceaksan.com and lab.ceaksan.com/zeigarnik, but the repository sits under the DNOMIA products folder. Left as `unknown`.
-- **No captures**: there is no `design/` folder, no screenshots and no capture script. Rendered sizes of system controls (table row height, sidebar, toolbar, form rows) are not recorded here because they come from AppKit defaults and were not measured.
+- **No captures**: Superseded 2026-11-22: there is no `design/` folder (it now holds the Level 1 template tools). Still true: no screenshots and no capture script. Rendered sizes of system controls (table row height, sidebar, toolbar, form rows) are not recorded here because they come from AppKit defaults and were not measured.
 - **Fixed accent**: `Theme.accent` is a fixed `#0a84ff` and does not follow the user's system accent color, while `.borderedProminent` buttons use the system tint. With a non-blue system accent the two blues would differ. Not verified visually.
 - **Unused or gallery-only tokens**: `Theme.rowPadding` is not referenced by any view; `Theme.bg` is used only by the Design Gallery.
 - **Inline fonts outside Theme**: 14 pt semibold (sheet headings, welcome steps), 22 pt semibold (welcome title), 12 pt (day numbers).
@@ -328,3 +348,9 @@ Each is backed by a code comment or an existing choice.
 - **Accessibility**: labels exist for LiveDot, SpecBar, Copy Path and Remove folder only. The Sparkline, chips and stars have no accessibility labels. Increased contrast and reduced transparency are not handled in code; not tested.
 - **Design spec and mockup**: `docs/superpowers/specs/2026-11-18-zeigarnik-design.md` and `2026-11-18-zeigarnik-mockup.html` exist locally but are gitignored, so they are not linked here and were not used as a source of values.
 - **Localization**: UI strings are English only; only dates, times and decimals are localized.
+- **Template Level 1** (added 2026-11-22):
+  - `◷` (ScheduledChip, scheduled card date) and `✎` (NoteMarker) are not in SF Pro; macOS draws them from a fallback font that was not identified, so the template leaves them blank. SF Symbols (`exclamationmark.triangle`, `pencil`, `trash`) are color-bound placeholder squares (accepted for Level 1 by Ceair 2026-11-22).
+  - Not drawn: SpecBar (its track `specTrack` is `Color.gray.opacity(0.2)`, a system color with no value in the repository), the CardActions confirm state (system `.small` buttons and `.borderedProminent` tint), Banner ok (no view uses it; the neutral banner copy uses a sample project name), draft cards and other view-local variants in `Sheets/` and `Calendar/`, and the inline 14, 22 and 12 pt fonts. Resolved 2026-11-22 for SpecBar: `specTrack` now equals `line` and SpecBar is drawn (design 1.2.0); the rest of this line still holds.
+  - Widths follow the Design Gallery column (440 pt minus 14 pt inspector padding on both sides, `DesignGallery.swift:12`); text uses SF Pro outlines from `SFNS.ttf` (optical size 17), which differ between macOS versions. Line heights are approximated as 1.2 x size; layout is reproduced from padding and stack spacing, not measured from a running app.
+  - Level 2 (screens) needs captures from a Debug build (CLAUDE.md documents the separate data set flags); not attempted, needs Ceair's approval.
+  - Added 2026-11-22: SpecBar is still not drawn after the Platform (system) work in the other templates. Its track is `Color.gray.opacity(0.2)` (Theme.swift:31), which is `NSColor.systemGray` on macOS. The Apple HIG Color page (https://developer.apple.com/design/human-interface-guidelines/color, fetched 2026-11-22) gives gray values only in its iOS, iPadOS system gray colors table (`systemGray` R-142,G-142,B-147 in both default appearances, with the note that SwiftUI `gray` is its equivalent); its System colors table has no gray, and the macOS dynamic colors are listed without values. Using the iOS value for macOS needs Ceair's decision. No other drawn or missing component here uses a system color or text style (the remaining gaps are system controls), so no `Platform (system)` collection was added and `design_version` stays 1.1.0. Resolved 2026-11-22: Ceair declined using the iOS systemGray value and chose `specTrack = line` in code instead; SpecBar is drawn since design 1.2.0.
