@@ -28,7 +28,7 @@ public enum Theme {
     public static let star = color(light: 0xf5a524, dark: 0xf5a524)
     public static let today = color(light: 0xff3b30, dark: 0xff3b30)
     public static let onAccent = Color.white
-    public static let specTrack = Color.gray.opacity(0.2)
+    public static let specTrack = line
 
     public static let body = Font.system(size: 13)
     public static let small = Font.system(size: 11.5)
