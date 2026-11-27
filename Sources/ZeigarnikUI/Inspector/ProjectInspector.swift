@@ -16,6 +16,15 @@ struct ProjectInspector: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
+                if let error = row.error {
+                    SectionHeader("Scan Error")
+                    Text(Format.scanError(error))
+                        .font(Theme.small)
+                        .foregroundStyle(Theme.warn)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                        .padding(.bottom, 12)
+                }
                 if row.state == .missing {
                     Banner("This project is not in your folders right now, or its folder cannot be found. Notes and schedules are preserved.", tone: .warn)
                         .clipShape(RoundedRectangle(cornerRadius: Theme.corner))

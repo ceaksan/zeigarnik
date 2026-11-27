@@ -72,7 +72,7 @@ public struct GitInspector: Sendable {
         let result = await git(repo, ["fetch", "--quiet"], timeout: .seconds(30))
         if result.timedOut { return .timedOut }
         if result.exitCode == 0 { return .ok(Date()) }
-        return .failed(result.stderr.trimmingCharacters(in: .whitespacesAndNewlines))
+        return .failed(scrubDiagnosticCredentials(result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)))
     }
 
     public func status(_ repo: URL) async throws -> GitStatus {

@@ -47,7 +47,7 @@ zeigarnik/
 │   │   ├── Activity/          # Claude/Codex history and transcript records, project mapping, time estimate, activity index
 │   │   ├── Specs/             # Spec and plan discovery, task parsing, evidence, Active Tasks counts
 │   │   ├── Live/              # "Open now" from hc
-│   │   ├── Scan/              # ScanConfig, ProjectScanner (one scan), RowFormatter for the CLI
+│   │   ├── Scan/              # ScanConfig, ProjectScanner (one scan), ScanLog (local unified log), RowFormatter for the CLI
 │   │   ├── Store/             # Schema (migrations v1 to v7), Store reads and writes, identity, owner data, note drafts
 │   │   └── Support/           # ProcessRunner (own process group, timeouts, no shell), AppPaths
 │   ├── ZeigarnikKit/          # App logic without SwiftUI, tested with swift test
@@ -72,6 +72,8 @@ zeigarnik/
 **Key responsibilities per module:**
 
 - `ZeigarnikCore/Scan/Scanner.swift`: one scan, in order: project table, discovery, identity, per-project facts (bounded concurrency, optional fetch), activity ingest, open now, repository visibility. Errors are collected per project into the `ScanReport`, never thrown away.
+- `ZeigarnikCore/Scan/ScanLog.swift`: at scanner completion, emits each report error once and one info summary (projects, errors, duration) to macOS unified logging. One logger uses subsystem `com.ceaksan.zeigarnik`, category `scan`, for both app and CLI scans. Folder names and scrubbed messages are public, full paths private. Logging is local only; macOS controls retention, with no database error history or custom log files (ADR-008).
+- `ZeigarnikCore/Git/FetchFailure.swift`: scrubs URL userinfo in diagnostic prose and classifies known HTTPS/SSH authentication failures. The scanner stores friendly messages with scrubbed git details; `; ` inside an individual fetch error becomes `, ` so the inspector's message delimiter remains unambiguous.
 - `ZeigarnikCore/Store`: the only place that talks SQL. Owns migrations, so the app and the CLI always share one schema.
 - `ZeigarnikKit/Model/AppModel.swift`: everything a view reads or changes goes through it. Store reads run off the main actor; a failed reload keeps the last rows and sets `loadError`.
 - `ZeigarnikKit/Scan/ScanCoordinator.swift`: scans on launch, every `scanInterval`, and on request; requests during a scan collapse into one follow-up.
@@ -140,6 +142,7 @@ The CLI takes the same paths as flags and runs without the visibility probe. `ze
 - Read-only toward repositories: `git fetch` is the only ref-changing git command; every git call uses `/usr/bin/git`, `GIT_TERMINAL_PROMPT=0`, a non-interactive SSH command and a timeout.
 - Agent logs: only agent, session id, timestamp, cwd and source are stored; never prompt or message text.
 - Remote URLs pass through `sanitizeRemoteURL` before storage, so embedded credentials are never persisted.
+- Failed fetch outcomes pass through `scrubDiagnosticCredentials` before snapshot storage; all unified-log error messages pass through it before public emission. Other stored scan errors retain their existing handling. No new network effects are introduced by diagnostics (ADR-008).
 - Network: `git fetch`, and with the visibility check on, one request per repository per day to `gh` or the GitHub/GitLab public API (unauthenticated, `User-Agent: Zeigarnik`). No telemetry.
 - `zeigarnik mcp` speaks only over standard input and output, opens no port, and offers no delete tool.
 - Processes run without a shell (`ProcessRunner`), each in its own process group with a timeout, so a timeout also ends helpers such as `git-remote-https` (ADR-005). Git runs with `GIT_ASKPASS` and `SSH_ASKPASS` cleared.

@@ -29,6 +29,14 @@ import Testing
         #expect(Format.duration(48 * 3600, locale: us) == "≈48 h")
     }
 
+    @Test func scanErrorMessagesUseSeparateLines() {
+        let fetch = "fetch: fatal: could not read Username for https://github.com: terminal prompts disabled"
+        let status = "status: unavailable\nadditional detail;without a space"
+        #expect(Format.scanError("\(fetch); \(status); history: unavailable") == "\(fetch)\n\(status)\nhistory: unavailable")
+        #expect(Format.scanError(fetch) == fetch)
+        #expect(Format.scanError("") == "")
+    }
+
     @Test func pushTexts() {
         #expect(Format.push(nil) == "?")
         #expect(Format.push(status(upstream: nil, ahead: nil, behind: nil)) == "no upstream")

@@ -42,6 +42,25 @@ private struct World {
     func scanner() -> ProjectScanner { ProjectScanner(config: config, store: store, runner: runner) }
 }
 
+private struct DiagnosticFailureRunner: CommandRunning {
+    let base: HcStubRunner
+    let command: String
+    let stderr: String
+
+    func run(_ executable: String, _ arguments: [String], cwd: URL?, environment: [String: String], timeout: Duration) async -> CommandResult {
+        if arguments.last == "remote" { return CommandResult(exitCode: 0, stdout: Data("origin\n".utf8), stderr: "", timedOut: false) }
+        if arguments.contains(command) { return CommandResult(exitCode: 128, stdout: Data(), stderr: stderr, timedOut: false) }
+        return await base.run(executable, arguments, cwd: cwd, environment: environment, timeout: timeout)
+    }
+}
+
+private final class RecordedScanLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [ScanLog.Entry] = []
+    var entries: [ScanLog.Entry] { lock.withLock { storage } }
+    func append(_ entry: ScanLog.Entry) { lock.withLock { storage.append(entry) } }
+}
+
 private func json(_ object: [String: Any]) -> String {
     String(decoding: try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]), as: UTF8.self)
 }
@@ -122,6 +141,48 @@ private func makeWorld() async throws -> World {
 @Suite("Scanner", .serialized)
 struct ScannerTests {
     private let today = dayKey(Date(), calendar: .current)
+
+    @Test func finishedScansLogEachErrorOnceAndOneSummary() async throws {
+        let world = try await makeWorld()
+        let output = RecordedScanLog()
+        let runner = DiagnosticFailureRunner(base: world.runner, command: "worktree", stderr: "fatal: https://user:fake-token@host.example/repo")
+        let scanner = ProjectScanner(config: world.config, store: world.store, runner: runner, log: ScanLog(emit: output.append))
+        for _ in 0..<2 {
+            let before = output.entries.count
+            let report = await scanner.scan(fetch: false)
+            #expect(report.errors.count == 2)
+            let emitted = Array(output.entries.dropFirst(before))
+            let expected: [ScanLog.Entry] = report.errors.map {
+                .error(folder: URL(fileURLWithPath: $0.projectPath!).lastPathComponent, path: $0.projectPath!, message: "git worktree list --porcelain: fatal: https://<redacted>@host.example/repo")
+            } + [.summary(projects: report.projects, errors: 2, duration: report.finishedAt.timeIntervalSince(report.startedAt))]
+            #expect(emitted == expected)
+        }
+    }
+
+    @Test func successfulScanLogsOnlySummary() async throws {
+        let world = try await makeWorld()
+        let output = RecordedScanLog()
+        let report = await ProjectScanner(config: world.config, store: world.store, runner: world.runner, log: ScanLog(emit: output.append)).scan(fetch: false)
+        #expect(report.errors.isEmpty)
+        #expect(output.entries == [.summary(projects: 3, errors: 0, duration: report.finishedAt.timeIntervalSince(report.startedAt))])
+    }
+
+    @Test func fetchGuidanceReachesReportStoreAndCLI() async throws {
+        let world = try await makeWorld()
+        let raw = "fatal: Authentication failed for 'https://user:fake-token@host.example/repo'; retry"
+        let runner = DiagnosticFailureRunner(base: world.runner, command: "fetch", stderr: raw)
+        let report = await ProjectScanner(config: world.config, store: world.store, runner: runner).scan(fetch: true)
+        let expected = "fetch: needs authentication. The remote uses HTTPS and git has no stored credential, so use an SSH remote or a credential helper. (git: fatal: Authentication failed for 'https://<redacted>@host.example/repo', retry)"
+        #expect(report.errors.count == 2)
+        #expect(report.errors.allSatisfy { $0.message == expected })
+        let rows = try world.store.projectRows(today: today, gap: 900)
+        #expect(rows.filter { $0.displayName != "Gamma" }.allSatisfy { $0.error == expected })
+        let table = formatProjectTable(rows, errors: report.errors, calendar: .current)
+        #expect(table.contains(expected))
+        #expect(!table.contains("fake-token"))
+        let fetch = await GitInspector(runner: runner).fetch(world.root.appendingPathComponent("beta"))
+        #expect(fetch == .failed("fatal: Authentication failed for 'https://<redacted>@host.example/repo'; retry"))
+    }
 
     @Test func scanFromEntryPoint() async throws {
         let world = try await makeWorld()

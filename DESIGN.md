@@ -2,10 +2,10 @@
 name: Zeigarnik # project.yml PRODUCT_NAME (no CFBundleDisplayName; window title "Zeigarnik" in ZeigarnikScenes.swift)
 company: ceaksan # decided by Ceair 2026-11-21
 brand: Zeigarnik # decided by Ceair 2026-11-21
-design_version: 1.2.0
-product_version: 0.2.1 # project.yml MARKETING_VERSION (matches zeigarnikVersion in AgentService.swift and tag v0.2.1)
+design_version: 1.3.0
+product_version: 0.2.2 # project.yml MARKETING_VERSION (matches zeigarnikVersion in AgentService.swift and tag v0.2.2)
 source_commit: 95ac6bf
-updated: 2026-11-22
+updated: 2026-11-27
 template: design/template.fig
 status: implemented
 schemes: [light, dark] # NSColor dynamicProvider in Theme.swift; Appearance setting System, Light, Dark
@@ -196,6 +196,8 @@ None. There is no `withAnimation` or `.animation` in the UI sources; state chang
 
 All in `Sources/ZeigarnikUI/Theme/Components.swift` unless noted.
 
+- **ProjectInspector scan error** (`Sources/ZeigarnikUI/Inspector/ProjectInspector.swift:19`): when `row.error` is non-nil, a "Scan Error" SectionHeader appears directly below the project header. Full error text uses `Theme.small` and `Theme.warn`, wraps without a line limit and supports text selection. `Format.scanError` converts each `; ` separator to a newline while preserving other text. With no error, the section is absent.
+
 - **Tag** (`:4-41`): text pill in `chip` type, tones `neutral` (text on `line`), `warn` (`warn` on `warnSoft`), `ok` (`ok` on `okSoft`).
 - **ProjectChip** (`:43-66`): project name plus optional detail (duration); the detail never truncates, the name truncates first. Background from `chips` by color index.
 - **ScheduledChip** (`:68-85`): "◷ " plus time and project, white on `accent`, one line.
@@ -253,7 +255,7 @@ Persistence and refresh
 Errors and empty states
 
 - Detail banners, top to bottom: database open failure, failed reload (last rows stay), owner data failure, each source problem (with Open Settings for a folder or vault), moved projects found again (neutral), errors in last scan (`Sources/ZeigarnikUI/Window/RootView.swift:76-96`).
-- A project with a scan error shows a warn triangle with the error as tooltip. A missing project shows a warn banner in its inspector; its notes and schedules are kept.
+- A project with a scan error shows a warn triangle with the error as tooltip and a selectable, wrapped "Scan Error" section near the top of its inspector, with each message on its own line. A missing project shows a warn banner in its inspector; its notes and schedules are kept.
 - Table empty: spinner with "First scan in progress: reading repositories, git status and agent history." while the first scan runs, otherwise "No projects in this view" (`ProjectTableView.swift:107-118`).
 - Open errors ("<app> is no longer installed.", "Could not open in <app>: …") appear under the inspector's open buttons (`AppEnvironment.swift:140-152`).
 
@@ -271,7 +273,7 @@ Welcome and menu bar
 | Sidebar | `Sources/ZeigarnikUI/Window/SidebarView.swift` | each filter selected, Open Now hidden, Open Now with "?", conditional Attention rows, folder groups |
 | Banners | `Sources/ZeigarnikUI/Window/RootView.swift:76-96` | startup error, load error, owner data error, source problem with and without Open Settings, relinks, scan errors |
 | Calendar: month grid | `Sources/ZeigarnikUI/Calendar/MonthView.swift` | empty month, populated (day totals, up to 2 scheduled chips, up to 3 project chips, "+N" or "Other ≈…", 1 note marker), today badge, selected day, days outside the month |
-| Project inspector | `Sources/ZeigarnikUI/Inspector/ProjectInspector.swift` | populated facts, missing project banner, path copied, open error, spec section with evidence (done, pending, external, no evidence), disclosure open, drafts, scheduled items, notes, "No notes yet.", note error, editing a note, confirming delete, accepting a draft |
+| Project inspector | `Sources/ZeigarnikUI/Inspector/ProjectInspector.swift` | populated facts, scan error section (single or multiple messages) or absent with no error, missing project banner, path copied, open error, spec section with evidence (done, pending, external, no evidence), disclosure open, drafts, scheduled items, notes, "No notes yet.", note error, editing a note, confirming delete, accepting a draft |
 | Day inspector | `Sources/ZeigarnikUI/Inspector/DayInspector.swift` | "No recorded work" with "-", populated projects, scheduled section, notes section, project not selected error |
 | Inspector placeholder | `RootView.swift:71` | "Select a project", "Select a day" |
 | Go to Date sheet | `Sources/ZeigarnikUI/Sheets/GoToDateSheet.swift` | default (today) |
@@ -325,6 +327,7 @@ Target for later levels (unchanged): `design/template.fig` (OpenPencil) is to ho
 - 1.0.0 (2026-11-21, `017819a`): DESIGN.md and Level 0 template (Cover only).
 - 1.1.0 (2026-11-22, `95ac6bf`): Level 1 template (Tokens and Components pages) with generator and verifier in `design/`. Minor bump: new tokens and components in the template; no rule or value in this file changed.
 - 1.2.0 (2026-11-22): SpecBar drawn in three gallery states (9/11, 12/12, 0/0) with three new size and radius tokens. Code change decided by Ceair: `Theme.specTrack` is now `line` instead of `Color.gray.opacity(0.2)` (`Theme.swift:31`), so the track has a repository value in both appearances. Minor bump: new tokens and components. Not built yet; the visual change needs a Debug build to confirm.
+- 1.3.0 (2026-11-27): ProjectInspector adds a selectable, wrapped "Scan Error" section with one message per line. Documentation and code only; `design/template.fig` remains at 1.2.0 by request, so its version metadata is not synchronized with this document.
 
 ## Anti-patterns
 

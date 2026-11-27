@@ -2,6 +2,10 @@ import Foundation
 
 /// Display text. Words are English; dates, times and decimals follow the calendar's (or given) locale.
 public enum Format {
+    public static func scanError(_ error: String) -> String {
+        error.replacingOccurrences(of: "; ", with: "\n")
+    }
+
     public static func relativeDay(_ date: Date?, now: Date, calendar: Calendar) -> String {
         guard let date else { return "-" }
         if calendar.isDate(date, inSameDayAs: now) { return "today" }

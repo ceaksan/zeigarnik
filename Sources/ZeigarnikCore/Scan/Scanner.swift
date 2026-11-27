@@ -45,12 +45,14 @@ public actor ProjectScanner {
     let store: Store
     let runner: CommandRunning
     let visibilityProbe: (any VisibilityProbing)?
+    let log: ScanLog
 
-    public init(config: ScanConfig, store: Store, runner: CommandRunning, visibilityProbe: (any VisibilityProbing)? = nil) {
+    public init(config: ScanConfig, store: Store, runner: CommandRunning, visibilityProbe: (any VisibilityProbing)? = nil, log: ScanLog = ScanLog()) {
         self.config = config
         self.store = store
         self.runner = runner
         self.visibilityProbe = visibilityProbe
+        self.log = log
     }
 
     struct Unit: Sendable {
@@ -233,7 +235,9 @@ public actor ProjectScanner {
             await updateVisibility(works, probe: probe, now: started, errors: &errors)
         }
 
-        return ScanReport(startedAt: started, finishedAt: Date(), projects: seen.count, errors: errors, openNow: open, relinks: relinks)
+        let report = ScanReport(startedAt: started, finishedAt: Date(), projects: seen.count, errors: errors, openNow: open, relinks: relinks)
+        log.record(report)
+        return report
     }
 
     static func inspect(_ work: Work, inspector: GitInspector, fetch: Bool, vaultRoot: URL, calendar: Calendar, today: String) async -> WorkResult {
@@ -251,7 +255,7 @@ public actor ProjectScanner {
         if let identity = work.unit.identity {
             if fetch {
                 fetchOutcome = await inspector.fetch(main)
-                if case .failed(let message) = fetchOutcome { note("fetch: \(message)") }
+                if case .failed(let message) = fetchOutcome { note(formatFetchFailure(message)) }
                 if case .timedOut = fetchOutcome { note("fetch: timed out") }
             }
             do {
