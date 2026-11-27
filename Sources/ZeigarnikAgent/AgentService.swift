@@ -2,7 +2,7 @@ import Foundation
 import ZeigarnikCore
 
 /// Version reported by `zeigarnik --version` and the MCP server; kept in step with `MARKETING_VERSION` in project.yml.
-public let zeigarnikVersion = "0.2.2"
+public let zeigarnikVersion = "0.2.3"
 
 public enum AgentError: Error, Equatable, CustomStringConvertible {
     case unknownProject(String)

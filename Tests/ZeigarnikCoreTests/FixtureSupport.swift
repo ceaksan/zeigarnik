@@ -1,4 +1,11 @@
 import Foundation
+@testable import ZeigarnikCore
+
+func makeTestScanner(config: ScanConfig, store: Store, runner: CommandRunning,
+                     visibilityProbe: (any VisibilityProbing)? = nil,
+                     log: ScanLog = ScanLog(emit: { _ in })) -> ProjectScanner {
+    ProjectScanner(config: config, store: store, runner: runner, visibilityProbe: visibilityProbe, log: log)
+}
 
 func fixtureURL(_ name: String) -> URL {
     Bundle.module.url(forResource: "Fixtures", withExtension: nil)!.appendingPathComponent(name)

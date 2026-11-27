@@ -3,7 +3,7 @@ name: Zeigarnik # project.yml PRODUCT_NAME (no CFBundleDisplayName; window title
 company: ceaksan # decided by Ceair 2026-11-21
 brand: Zeigarnik # decided by Ceair 2026-11-21
 design_version: 1.3.0
-product_version: 0.2.2 # project.yml MARKETING_VERSION (matches zeigarnikVersion in AgentService.swift and tag v0.2.2)
+product_version: 0.2.3 # project.yml MARKETING_VERSION (matches zeigarnikVersion in AgentService.swift and tag v0.2.3)
 source_commit: 95ac6bf
 updated: 2026-11-27
 template: design/template.fig

@@ -39,7 +39,7 @@ private struct World {
         }
     }
 
-    func scanner() -> ProjectScanner { ProjectScanner(config: config, store: store, runner: runner) }
+    func scanner() -> ProjectScanner { makeTestScanner(config: config, store: store, runner: runner) }
 }
 
 private struct DiagnosticFailureRunner: CommandRunning {
@@ -146,7 +146,7 @@ struct ScannerTests {
         let world = try await makeWorld()
         let output = RecordedScanLog()
         let runner = DiagnosticFailureRunner(base: world.runner, command: "worktree", stderr: "fatal: https://user:fake-token@host.example/repo")
-        let scanner = ProjectScanner(config: world.config, store: world.store, runner: runner, log: ScanLog(emit: output.append))
+        let scanner = makeTestScanner(config: world.config, store: world.store, runner: runner, log: ScanLog(emit: output.append))
         for _ in 0..<2 {
             let before = output.entries.count
             let report = await scanner.scan(fetch: false)
@@ -162,7 +162,7 @@ struct ScannerTests {
     @Test func successfulScanLogsOnlySummary() async throws {
         let world = try await makeWorld()
         let output = RecordedScanLog()
-        let report = await ProjectScanner(config: world.config, store: world.store, runner: world.runner, log: ScanLog(emit: output.append)).scan(fetch: false)
+        let report = await makeTestScanner(config: world.config, store: world.store, runner: world.runner, log: ScanLog(emit: output.append)).scan(fetch: false)
         #expect(report.errors.isEmpty)
         #expect(output.entries == [.summary(projects: 3, errors: 0, duration: report.finishedAt.timeIntervalSince(report.startedAt))])
     }
@@ -171,7 +171,7 @@ struct ScannerTests {
         let world = try await makeWorld()
         let raw = "fatal: Authentication failed for 'https://user:fake-token@host.example/repo'; retry"
         let runner = DiagnosticFailureRunner(base: world.runner, command: "fetch", stderr: raw)
-        let report = await ProjectScanner(config: world.config, store: world.store, runner: runner).scan(fetch: true)
+        let report = await makeTestScanner(config: world.config, store: world.store, runner: runner).scan(fetch: true)
         let expected = "fetch: needs authentication. The remote uses HTTPS and git has no stored credential, so use an SSH remote or a credential helper. (git: fatal: Authentication failed for 'https://<redacted>@host.example/repo', retry)"
         #expect(report.errors.count == 2)
         #expect(report.errors.allSatisfy { $0.message == expected })
@@ -206,7 +206,7 @@ struct ScannerTests {
         var config = world.config
         config.fetchConcurrency = 2
         let runner = StaggeredFetchRunner(base: world.runner)
-        _ = await ProjectScanner(config: config, store: world.store, runner: runner).scan(fetch: true)
+        _ = await makeTestScanner(config: config, store: world.store, runner: runner).scan(fetch: true)
         let events = await runner.events
         let thirdStart = try #require(events.firstIndex(of: "start3"))
         let firstFinish = try #require(events.firstIndex(of: "end1"))
@@ -239,7 +239,7 @@ struct ScannerTests {
         }
         let dbURL = world.base.appendingPathComponent("privacy.sqlite")
         let store = try Store(path: dbURL.path)
-        let report = await ProjectScanner(config: world.config, store: store, runner: world.runner).scan(fetch: false)
+        let report = await makeTestScanner(config: world.config, store: store, runner: world.runner).scan(fetch: false)
         #expect(report.errors.isEmpty)
         #expect(try store.messageCount() == 8)
         let messages = try store.effectiveMessages()
@@ -339,14 +339,14 @@ struct ScannerTests {
         let world = try await makeWorld()
         let path = world.base.appendingPathComponent("membership.sqlite").path
         let store = try Store(path: path)
-        _ = await ProjectScanner(config: world.config, store: store, runner: world.runner).scan(fetch: false)
+        _ = await makeTestScanner(config: world.config, store: store, runner: world.runner).scan(fetch: false)
         let reopened = try Store(path: path)
         let rows = try reopened.projectRows(today: today, gap: 900)
         #expect(rows.count == 3)
         #expect(rows.allSatisfy { $0.isTableProject })
         #expect(rows.allSatisfy { $0.withPinned(true).isTableProject })
         try world.write(world.root.appendingPathComponent("CLAUDE.md"), "# Projects\n")
-        _ = await ProjectScanner(config: world.config, store: reopened, runner: world.runner).scan(fetch: false)
+        _ = await makeTestScanner(config: world.config, store: reopened, runner: world.runner).scan(fetch: false)
         #expect(try reopened.projectRows(today: today, gap: 900).allSatisfy { !$0.isTableProject })
     }
 
@@ -372,7 +372,7 @@ struct ScannerTests {
         _ = await world.scanner().scan(fetch: false)
         var broken = world.config
         broken.roots = [world.base.appendingPathComponent("nonexistent")]
-        let report = await ProjectScanner(config: broken, store: world.store, runner: world.runner).scan(fetch: false)
+        let report = await makeTestScanner(config: broken, store: world.store, runner: world.runner).scan(fetch: false)
         #expect(!report.errors.isEmpty)
         #expect(try world.store.knownProjects().allSatisfy { $0.state == .active })
     }
@@ -432,7 +432,7 @@ struct ScannerTests {
         let world = try await makeWorld()
         var config = world.config
         config.ingestBatchBytes = 64
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner).scan(fetch: false)
         let rows = try world.store.projectRows(today: today, gap: 900)
         #expect(rows.first { $0.displayName == "Alpha" }?.totalSeconds == 600)
         #expect(rows.first { $0.displayName == "Beta" }?.totalSeconds == 300)
@@ -500,7 +500,7 @@ struct ScannerTests {
         _ = await world.scanner().scan(fetch: false)
         let alpha = try #require(try world.store.projectRows(today: today, gap: 900).first { $0.displayName == "Alpha" })
         #expect(try world.store.commitDayCount(projectId: alpha.id) == 1)
-        let report = await ProjectScanner(config: world.config, store: world.store, runner: FailingLogRunner(base: world.runner)).scan(fetch: false)
+        let report = await makeTestScanner(config: world.config, store: world.store, runner: FailingLogRunner(base: world.runner)).scan(fetch: false)
         #expect(report.errors.contains { $0.message.contains("history") })
         #expect(try world.store.commitDayCount(projectId: alpha.id) == 1)
         let after = try #require(try world.store.projectRows(today: today, gap: 900).first { $0.id == alpha.id })
@@ -513,7 +513,7 @@ struct ScannerTests {
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: world.root)
         var config = world.config
         config.roots = [link]
-        let report = await ProjectScanner(config: config, store: world.store, runner: world.runner).scan(fetch: false)
+        let report = await makeTestScanner(config: config, store: world.store, runner: world.runner).scan(fetch: false)
         #expect(report.errors.isEmpty, "\(report.errors)")
         let rows = try world.store.projectRows(today: today, gap: 900)
         #expect(rows.map(\.displayName) == ["Alpha", "Beta", "Gamma"])
@@ -527,8 +527,8 @@ struct ScannerTests {
         let probe = CountingProbe(answer: .public)
         var config = world.config
         config.checkVisibility = true
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         #expect(await probe.asked.items == [RemoteRepo(host: "github.com", path: "acme/alpha")])
         let rows = try world.store.projectRows(today: today, gap: 900)
         #expect(rows.first { $0.displayName == "Alpha" }?.visibility == .public)
@@ -542,8 +542,8 @@ struct ScannerTests {
         let probe = CountingProbe(answer: .unknown)
         var config = world.config
         config.checkVisibility = true
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         #expect(await probe.asked.items.count == 2)
     }
 
@@ -552,7 +552,7 @@ struct ScannerTests {
         let alpha = world.root.appendingPathComponent("02_Products/alpha")
         await runGit(alpha, ["remote", "add", "origin", "git@github.com:acme/alpha.git"])
         let probe = CountingProbe(answer: .public)
-        _ = await ProjectScanner(config: world.config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: world.config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         #expect(await probe.asked.items.isEmpty)
         #expect(try world.store.projectRows(today: today, gap: 900).allSatisfy { $0.visibility == nil })
     }
@@ -564,12 +564,12 @@ struct ScannerTests {
         var config = world.config
         config.checkVisibility = true
         let probe = CountingProbe(answer: .public)
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         let before = try #require(try world.store.knownProjects().first { $0.path == repo.path })
-        _ = await ProjectScanner(config: config, store: world.store, runner: FailingRemoteRunner(base: world.runner), visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: FailingRemoteRunner(base: world.runner), visibilityProbe: probe).scan(fetch: false)
         #expect(try world.store.visibilityChecks()[before.id]?.visibility == .public)
         #expect(try world.store.knownProjects().first { $0.id == before.id }?.identity?.remoteURL == before.identity?.remoteURL)
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         #expect(await probe.asked.items.count == 1)
     }
 
@@ -580,17 +580,17 @@ struct ScannerTests {
         var config = world.config
         config.checkVisibility = true
         let probe = CountingProbe(answer: .public)
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         let id = try #require(try world.store.knownProjects().first { $0.path == repo.path }?.id)
         await runGit(repo, ["remote", "set-url", "origin", "https://github.com/orbit/harbor.git"])
         config.checkVisibility = false
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         #expect(try world.store.visibilityChecks()[id] == nil)
         config.checkVisibility = true
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         #expect(await probe.asked.items == [RemoteRepo(host: "github.com", path: "orbit/lumen"), RemoteRepo(host: "github.com", path: "orbit/harbor")])
         await runGit(repo, ["remote", "remove", "origin"])
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         #expect(try world.store.visibilityChecks()[id] == nil)
     }
 
@@ -601,10 +601,10 @@ struct ScannerTests {
         var config = world.config
         config.checkVisibility = true
         let probe = CountingProbe(answer: .public)
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         let id = try #require(try world.store.knownProjects().first { $0.path == repo.path }?.id)
         try FileManager.default.removeItem(at: repo)
-        _ = await ProjectScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
+        _ = await makeTestScanner(config: config, store: world.store, runner: world.runner, visibilityProbe: probe).scan(fetch: false)
         #expect(try world.store.visibilityChecks()[id] == nil)
         #expect(try world.store.knownProjects().first { $0.id == id }?.state == .missing)
     }

@@ -51,7 +51,7 @@ struct ManifestDriftTests {
         }
         let store = try Store.inMemory()
         let home = try makeTempDir()
-        let scanner = ProjectScanner(config: .standard(roots: [root], vaultRoot: nil, home: home), store: store, runner: ProcessRunner())
+        let scanner = makeTestScanner(config: .standard(roots: [root], vaultRoot: nil, home: home), store: store, runner: ProcessRunner())
         let first = await scanner.scan(fetch: false)
         #expect(first.errors.isEmpty)
         let today = dayKey(Date(), calendar: .current)
