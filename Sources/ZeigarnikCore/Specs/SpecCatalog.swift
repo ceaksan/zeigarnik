@@ -9,6 +9,7 @@ public struct SpecSummary: Sendable, Equatable, Codable {
     public let declared: String?
     public let stage: SpecStage
     public let evidence: PlanEvidence?
+    public var ownerMark: OwnerSpecOverride?
 
     public init(specPath: String, planPath: String?, date: String?, title: String, declared: String?, stage: SpecStage, evidence: PlanEvidence?, planPaths: [String] = []) {
         let paths = planPaths.isEmpty ? (planPath.map { [$0] } ?? []) : planPaths
@@ -38,6 +39,25 @@ public struct SpecSummary: Sendable, Equatable, Codable {
             evidence: try values.decodeIfPresent(PlanEvidence.self, forKey: .evidence),
             planPaths: try values.decodeIfPresent([String].self, forKey: .planPaths) ?? []
         )
+    }
+
+    public func applyingOverride(_ override: OwnerSpecOverride?) -> SpecSummary {
+        let stage: SpecStage
+        if specPath == "SHARED_TASK_NOTES.md" || specPath.hasPrefix("openspec/") {
+            switch override {
+            case .done: stage = .done
+            case .notDone:
+                stage = evidence == nil ? (self.stage == .done ? .design : self.stage)
+                    : specStage(declared: declared, plan: evidence, override: override)
+            case nil: stage = self.stage
+            }
+        } else {
+            stage = specStage(declared: declared, plan: evidence, override: override)
+        }
+        var result = SpecSummary(specPath: specPath, planPath: planPath, date: date, title: title,
+                                 declared: declared, stage: stage, evidence: evidence, planPaths: planPaths)
+        result.ownerMark = override
+        return result
     }
 }
 
@@ -98,7 +118,7 @@ public func catalogSpecs(repo: URL, context: EvidenceContext, overrides: [String
         summaries.append(SpecSummary(
             specPath: specPath, planPath: linked.last?.path, date: datePrefix(specPath), title: title(text, fallback: specPath),
             declared: declared,
-            stage: specStage(declared: declared, plan: evidence, override: overrides[specPath]),
+            stage: specStage(declared: declared, plan: evidence, override: nil),
             evidence: evidence, planPaths: linked.map(\.path)
         ))
     }
@@ -109,7 +129,7 @@ public func catalogSpecs(repo: URL, context: EvidenceContext, overrides: [String
         summaries.append(SpecSummary(
             specPath: planPath, planPath: planPath, date: datePrefix(planPath), title: title(text, fallback: planPath),
             declared: parsed.declaredStatus,
-            stage: specStage(declared: parsed.declaredStatus, plan: evidence, override: overrides[planPath]),
+            stage: specStage(declared: parsed.declaredStatus, plan: evidence, override: nil),
             evidence: evidence
         ))
     }
@@ -117,16 +137,14 @@ public func catalogSpecs(repo: URL, context: EvidenceContext, overrides: [String
     if FileManager.default.fileExists(atPath: repo.appendingPathComponent("SHARED_TASK_NOTES.md").path) {
         let text = read(repo, "SHARED_TASK_NOTES.md")
         let (checked, total) = checkboxCounts(text)
-        let stage: SpecStage
-        switch overrides["SHARED_TASK_NOTES.md"] {
-        case .done: stage = .done
-        case .notDone: stage = total == 0 ? .design : .inProgress(done: checked, total: total, external: 0)
-        case nil: stage = total == 0 ? .design : (checked == total ? .done : .inProgress(done: checked, total: total, external: 0))
-        }
+        let stage: SpecStage = total == 0 ? .design : (checked == total ? .done : .inProgress(done: checked, total: total, external: 0))
+        var evidence = PlanEvidence(tasks: [])
+        evidence.done = checked
+        evidence.denominator = total
         summaries.append(SpecSummary(specPath: "SHARED_TASK_NOTES.md", planPath: nil, date: nil, title: title(text, fallback: "SHARED_TASK_NOTES.md"),
-                                     declared: nil, stage: stage, evidence: nil))
+                                     declared: nil, stage: stage, evidence: evidence))
     }
-    return summaries
+    return summaries.map { $0.applyingOverride(overrides[$0.specPath]) }
 }
 
 public func headline(_ specs: [SpecSummary]) -> SpecHeadline {

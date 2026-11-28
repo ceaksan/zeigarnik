@@ -4,6 +4,40 @@ import Testing
 
 @Suite("PlanParser")
 struct PlanParserTests {
+    @Test func inlineFilesProvideEvidenceDespiteUntickedSteps() throws {
+        let plan = parsePlan("""
+        # Sample plan
+        ### Task 2: Normalize values
+        **Files:** Create `src/sample/values.py`, `tests/test_values.py`; modify `src/sample/cli.py` (add `normalize`)
+        - [ ] Implement
+        """)
+        let task = try #require(plan.tasks.first)
+        #expect(task.createPaths == ["src/sample/values.py", "tests/test_values.py"])
+        #expect(task.modifyPaths == ["src/sample/cli.py"])
+        let context = EvidenceContext(trackedFiles: ["src/sample/values.py", "tests/test_values.py", "src/sample/cli.py"],
+                                      history: [], planIntroducedBy: nil, fileExists: { _ in false })
+        #expect(evaluate(task, in: context).evidence == .pending(missing: ["src/sample/cli.py"]))
+        let built = EvidenceContext(trackedFiles: context.trackedFiles,
+                                    history: [CommitRecord(hash: "change", parents: [], authorDate: Date(), subject: "Implement", files: ["docs/plans/sample.md", "src/sample/cli.py"])],
+                                    planIntroducedBy: "change", fileExists: { _ in false })
+        #expect(evaluate(task, in: built).evidence == .done)
+    }
+
+    @Test func inlineFilesIgnoreFencedExamplesAndParentheticalCommands() throws {
+        let plan = parsePlan("""
+        ### Task 1: Sample
+        **Files:** Create: `src/sample.py` (example `ignored/file.py`; command `tool.test`); Test `tests/sample.py`
+        ```
+        **Files:** Create `ignored/fenced.py`
+        ```
+        - [ ] Implement
+        """)
+        let task = try #require(plan.tasks.first)
+        #expect(task.createPaths == ["src/sample.py"])
+        #expect(task.testPaths == ["tests/sample.py"])
+        #expect(task.checked == 0)
+    }
+
     @Test func ignoresParentheticalBackticks() throws {
         let plan = parsePlan(fixture("plan-board-task1.md"))
         let t = try #require(plan.tasks.first)

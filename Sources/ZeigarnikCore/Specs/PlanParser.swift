@@ -69,6 +69,19 @@ public func parsePlan(_ markdown: String) -> ParsedPlan {
             default: current!.test += paths
             }
         }
+        if line.hasPrefix("**Files:**") {
+            let files = String(line.dropFirst("**Files:**".count)).replacing(/\([^)]*\)/, with: "")
+            for clause in files.split(separator: ";") {
+                let text = clause.trimmingCharacters(in: .whitespaces)
+                guard let match = text.firstMatch(of: /^(?i)(Create|Modify|Test):?\s+(.*)$/) else { continue }
+                let paths = parsePathList(String(match.2))
+                switch match.1.lowercased() {
+                case "create": current!.create += paths
+                case "modify": current!.modify += paths
+                default: current!.test += paths
+                }
+            }
+        }
         if line.hasPrefix("- [x]") || line.hasPrefix("- [X]") {
             current!.checked += 1
             current!.checkboxes += 1

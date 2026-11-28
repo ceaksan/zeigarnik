@@ -142,6 +142,50 @@ private func makeWorld() async throws -> World {
 struct ScannerTests {
     private let today = dayKey(Date(), calendar: .current)
 
+    @Test func scanRetainsUnmarkedEvidenceForReset() async throws {
+        let world = try await makeWorld()
+        let repo = world.root.appendingPathComponent("02_Products/alpha")
+        try world.write(repo.appendingPathComponent("SHARED_TASK_NOTES.md"), "- [ ] Sample task\n")
+        let scanner = world.scanner()
+        #expect(await scanner.scan(fetch: false).errors.isEmpty)
+        let id = try #require(try world.store.projectRows(today: today, gap: 900).first { $0.displayName == "Alpha" }?.id)
+        try world.store.setSpecOverride(projectId: id, specPath: "SHARED_TASK_NOTES.md", .done, note: nil)
+        #expect(await scanner.scan(fetch: false).errors.isEmpty)
+        #expect(try world.store.projectRows(today: today, gap: 900).first { $0.id == id }?.spec?.lastDone?.stage == .done)
+        #expect(try world.store.specSummaries(projectId: id).first?.stage == .done)
+        try world.store.setSpecOverride(projectId: id, specPath: "SHARED_TASK_NOTES.md", nil, note: nil)
+        #expect(try world.store.specSummaries(projectId: id).first?.stage == .inProgress(done: 0, total: 1, external: 0))
+    }
+
+    @Test func inlinePlanFilesReachStoredScannerEvidence() async throws {
+        let world = try await makeWorld()
+        let repo = world.root.appendingPathComponent("02_Products/alpha")
+        try world.write(repo.appendingPathComponent("docs/plans/sample.md"), """
+        # Sample plan
+        ### Task 1: Normalize values
+        **Files:** Create `src/sample.py`, `tests/sample.py`
+        - [ ] Implement
+        """)
+        for path in ["src/sample.py", "tests/sample.py"] { try world.write(repo.appendingPathComponent(path), "Synthetic fixture\n") }
+        #expect(await world.scanner().scan(fetch: false).errors.isEmpty)
+        let row = try #require(try world.store.projectRows(today: today, gap: 900).first { $0.displayName == "Alpha" })
+        let summary = try #require(try world.store.specSummaries(projectId: row.id).first)
+        #expect(summary.evidence?.tasks.first?.evidence == .done)
+        #expect(summary.evidence?.tasks.first?.resolvedPaths == ["src/sample.py", "tests/sample.py"])
+        #expect(row.spec?.lastDone?.stage == .done)
+    }
+
+    @Test func unreadableOverridesReachScanReportAndLog() async throws {
+        let world = try await makeWorld()
+        try await world.store.dbQueue.write { try $0.execute(sql: "ALTER TABLE specOverride RENAME TO unavailableOverride") }
+        let output = RecordedScanLog()
+        let report = await makeTestScanner(config: world.config, store: world.store, runner: world.runner, log: ScanLog(emit: output.append)).scan(fetch: false)
+        #expect(report.errors.count == 3)
+        #expect(report.errors.allSatisfy { $0.message.contains("specOverride") })
+        let errors = output.entries.filter { if case .error = $0 { return true }; return false }
+        #expect(errors.count == report.errors.count)
+    }
+
     @Test func finishedScansLogEachErrorOnceAndOneSummary() async throws {
         let world = try await makeWorld()
         let output = RecordedScanLog()

@@ -100,7 +100,7 @@ public enum Format {
     }
 
     public static func specLine(_ spec: SpecSummary) -> String {
-        "Spec: \(spec.declared ?? "not declared") · Evidence: \(stage(spec.stage))"
+        "Spec: \(spec.declared ?? "not declared") · " + (spec.ownerMark == .done ? "Owner: Done" : "Evidence: \(stage(spec.stage))")
     }
 
     static func stage(_ stage: SpecStage) -> String {

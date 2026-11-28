@@ -11,6 +11,7 @@ struct ProjectInspector: View {
     @State private var detail = ProjectDetail()
     @State private var noteText = ""
     @State private var noteError: String?
+    @State private var showCompletedSpecs = false
 
     var body: some View {
         ScrollView {
@@ -118,7 +119,14 @@ struct ProjectInspector: View {
     @ViewBuilder private var specSection: some View {
         if !detail.specs.isEmpty {
             SectionHeader("Spec")
-            ForEach(detail.specs, id: \.specPath) { spec in
+            Toggle("Show Completed", isOn: $showCompletedSpecs)
+                .toggleStyle(.checkbox)
+                .font(Theme.small)
+                .padding(.bottom, 8)
+            if detail.visibleSpecs(showCompleted: showCompletedSpecs).isEmpty {
+                Text("No open specs.").font(Theme.small).foregroundStyle(Theme.muted)
+            }
+            ForEach(detail.visibleSpecs(showCompleted: showCompletedSpecs), id: \.specPath) { spec in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(spec.title).fontWeight(.semibold)
                     Text(Format.specLine(spec)).font(Theme.small).foregroundStyle(Theme.muted)

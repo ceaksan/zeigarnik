@@ -175,7 +175,7 @@ public actor ProjectScanner {
                 seen.insert(id)
                 for checkout in unit.checkouts { mapperEntries.append((id: id, path: checkout.path)) }
                 try store.recordPaths(projectId: id, unit.checkouts.map(\.path))
-                works.append(Work(projectId: id, unit: unit, vaultDirectory: row?.vaultDirectory, overrides: (try? store.specOverrides(projectId: id)) ?? [:]))
+                works.append(Work(projectId: id, unit: unit, vaultDirectory: row?.vaultDirectory, overrides: try store.specOverrides(projectId: id)))
             } catch {
                 errors.append(ScanError(projectPath: unit.main.path, message: "Store: \(error)"))
             }
@@ -290,7 +290,7 @@ public actor ProjectScanner {
                                       fileExists: { FileManager.default.fileExists(atPath: main.appendingPathComponent($0).path) })
         var specs: [SpecSummary]?
         if !historyFailed && !trackedFailed {
-            do { specs = try catalogSpecs(repo: main, context: context, overrides: work.overrides) } catch { note("specs: \(error)") }
+            do { specs = try catalogSpecs(repo: main, context: context, overrides: [:]) } catch { note("specs: \(error)") }
         }
 
         var activeTasks: Int?
@@ -303,7 +303,8 @@ public actor ProjectScanner {
         if case .ok(let date) = fetchOutcome { lastFetchAt = date }
         let snapshot = ProjectSnapshot(
             projectId: work.projectId, day: today, scannedAt: Date(), status: status, fetch: fetchOutcome, lastFetchAt: lastFetchAt,
-            lastCommitAt: history.first?.authorDate, readme: readme, spec: specs.map(headline), activeTasksOpen: activeTasks,
+            lastCommitAt: history.first?.authorDate, readme: readme,
+            spec: specs.map { headline($0.map { $0.applyingOverride(work.overrides[$0.specPath]) }) }, activeTasksOpen: activeTasks,
             error: errors.isEmpty ? nil : errors.map(\.message).joined(separator: "; "),
             architecture: architecture
         )

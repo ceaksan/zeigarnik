@@ -73,6 +73,8 @@ import Testing
         #expect(Format.specShort(nil) == "-")
         #expect(Format.specLine(spec(.inProgress(done: 10, total: 11, external: 1))) == "Spec: Accepted · Evidence: 10/11, 1 external")
         #expect(Format.specLine(spec(.design, declared: nil)) == "Spec: not declared · Evidence: Design")
+        #expect(Format.specLine(spec(.design, declared: nil).applyingOverride(.done)) == "Spec: not declared · Owner: Done")
+        #expect(Format.specLine(spec(.done, declared: nil)) == "Spec: not declared · Evidence: Done")
     }
 
     @Test func relativeDaysFollowLocale() {

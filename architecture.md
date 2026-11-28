@@ -76,6 +76,7 @@ zeigarnik/
 - `ZeigarnikCore/Git/FetchFailure.swift`: scrubs URL userinfo in diagnostic prose and classifies known HTTPS/SSH authentication failures. The scanner stores friendly messages with scrubbed git details; `; ` inside an individual fetch error becomes `, ` so the inspector's message delimiter remains unambiguous.
 - `ZeigarnikCore/Store`: the only place that talks SQL. Owns migrations, so the app and the CLI always share one schema.
 - `ZeigarnikKit/Model/AppModel.swift`: everything a view reads or changes goes through it. Store reads run off the main actor; a failed reload keeps the last rows and sets `loadError`.
+- Spec inspector reads join cached unmarked evidence with current owner overrides. Done specs are hidden by default; Show Completed keeps Reset and Mark Not Done accessible. Scans store unmarked evidence but apply marks to the project headline. Owner-data failures set the existing banner and log operation, NSError domain and code under category `owner-data`, without SQL, bound arguments or raw error text (ADR-009).
 - `ZeigarnikKit/Scan/ScanCoordinator.swift`: scans on launch, every `scanInterval`, and on request; requests during a scan collapse into one follow-up.
 - `ZeigarnikUI/AppEnvironment.swift`: builds store, scanner, coordinator, calendar sync and model; applies settings changes (rescan, reload, timer, calendar, login item); polls for writes from other connections every 2 seconds.
 - `ZeigarnikAgent`: the only way outside the app to change notes. The MCP server exposes no delete (ADR-006).
@@ -116,7 +117,7 @@ Note / pin / schedule / spec override in the UI
 | snapshot | Latest per-project facts: git status, README, architecture doc, summary, error |
 | ownerMessage, session, codexSession, fileCursor | Agent activity: timestamps only, never message text |
 | commitDay | Commits per project per day |
-| specEvidence, specOverride | Spec progress evidence and the owner's manual overrides |
+| specEvidence, specOverride | Unmarked spec progress evidence and the owner's manual overrides, joined when inspector details load |
 | note, scheduledItem, calendarOp | Owner notes, scheduled follow-ups, pending calendar operations |
 | noteDraftDismissal | Dismissed or accepted draft kinds per project, held until the kind clears; drafts themselves are computed (ADR-006) |
 | repoVisibility | public / private / unknown with check time |

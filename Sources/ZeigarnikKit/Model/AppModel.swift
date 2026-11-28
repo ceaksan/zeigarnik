@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 
 public enum MainView: Sendable { case list, calendar }
 public enum SidebarSelection: Hashable, Sendable { case filter(ProjectFilter), other }
@@ -37,6 +38,10 @@ public struct ProjectDetail: Sendable, Equatable {
     public var drafts: [NoteDraft] = []
     public var items: [ScheduledItem] = []
     public var specs: [SpecSummary] = []
+
+    public func visibleSpecs(showCompleted: Bool = false) -> [SpecSummary] {
+        showCompleted ? specs : specs.filter { $0.stage != .done }
+    }
 }
 
 public struct DayDetail: Sendable, Equatable {
@@ -70,6 +75,10 @@ public final class AppModel {
     /// Set when reading or writing notes, schedules, pins or spec marks fails, so a failure never looks like empty data.
     public private(set) var ownerDataError: String?
     @ObservationIgnored private var ownerErrorFromRead = false
+    private static let ownerLogger = Logger(subsystem: "com.ceaksan.zeigarnik", category: "owner-data")
+    @ObservationIgnored var ownerErrorLog: (String) -> Void = { message in
+        AppModel.ownerLogger.error("\(message, privacy: .public)")
+    }
     public private(set) var isLoaded = false
     public private(set) var settings: AppSettings
     /// Bumped after every owner-data change; views reload their detail with `.task(id:)` on it.
@@ -245,6 +254,8 @@ public final class AppModel {
     private func ownerFailed(_ action: String, _ error: any Error, read: Bool) {
         ownerDataError = "Could not \(action): \(error)"
         ownerErrorFromRead = read
+        let diagnostic = error as NSError
+        ownerErrorLog("Could not \(action): \(diagnostic.domain) code \(diagnostic.code)")
     }
 
     /// Runs an owner-data write; success clears any earlier owner-data error.

@@ -3,7 +3,7 @@ name: Zeigarnik # project.yml PRODUCT_NAME (no CFBundleDisplayName; window title
 company: ceaksan # decided by Ceair 2026-11-21
 brand: Zeigarnik # decided by Ceair 2026-11-21
 design_version: 1.3.0
-product_version: 0.2.3 # project.yml MARKETING_VERSION (matches zeigarnikVersion in AgentService.swift and tag v0.2.3)
+product_version: 0.2.4 # project.yml MARKETING_VERSION (matches zeigarnikVersion in AgentService.swift and tag v0.2.4)
 source_commit: 95ac6bf
 updated: 2026-11-27
 template: design/template.fig
@@ -245,7 +245,8 @@ Notes, drafts, schedules, pins, spec marks
 - Accepting a draft opens it in the editor; saving adds a note dated today and dismisses the draft. Dismissing hides that kind of draft for the project until its state clears (`AppModel.swift:278-288`, ADR-006).
 - New schedule from a project: title "<project>: ", next full hour, 1 hour, Also add to macOS Calendar on (`Sources/ZeigarnikUI/Inspector/ProjectInspector.swift:179-191`). From a day: 10:00 on that day, project from the day's picker (`DayInspector.swift:62-64`, `:83-87`). The project picker is hidden when editing or when the project and a title are already set (`ScheduleSheet.swift:21`). Durations offered: 30 min, 1, 1.5, 2 and 3 hours, plus the item's own duration if different (`ScheduleSheet.swift:81-84`). An empty title saves as the project name (`AppModel.swift:330-331`).
 - Saving a schedule with calendar on asks for calendar access the first time (`Sources/ZeigarnikUI/AppEnvironment.swift:259-265`). The sheet shows a warning for denied, write-only, not yet requested, or no target calendar (`AppEnvironment.swift:249-256`). Sync badges: Pending, In Calendar, Not in Calendar, Removed from Calendar, "Unresolved: <detail>" (`Sources/ZeigarnikUI/Support/UIFormat.swift:21-29`).
-- ★ Pin and Unpin toggle immediately. Mark Done, Mark Not Done and Reset on a spec apply immediately without confirmation and start a scan without fetch (`AppModel.swift:352-356`).
+- Pin and Unpin toggle immediately. Mark Done, Mark Not Done and Reset save without confirmation and start a scan without fetch (`Sources/ZeigarnikKit/Model/AppModel.swift:363`). Inspector reads apply the current mark immediately. Done specs are hidden by default; Show Completed reveals them with the same three actions. When every spec is hidden, the section says "No open specs." (`Sources/ZeigarnikUI/Inspector/ProjectInspector.swift:119`, `Tests/ZeigarnikKitTests/SpecOverrideTests.swift:7`). This corrects the previous description: before 2026-11-28 the inspector waited for scan evidence and retained Done rows.
+- Owner-data read and write failures retain the existing banner and emit an operation, error domain and numeric code to local unified logging. SQL, note text and raw error descriptions are not logged (`Sources/ZeigarnikKit/Model/AppModel.swift:254`).
 
 Persistence and refresh
 
@@ -328,6 +329,7 @@ Target for later levels (unchanged): `design/template.fig` (OpenPencil) is to ho
 - 1.1.0 (2026-11-22, `95ac6bf`): Level 1 template (Tokens and Components pages) with generator and verifier in `design/`. Minor bump: new tokens and components in the template; no rule or value in this file changed.
 - 1.2.0 (2026-11-22): SpecBar drawn in three gallery states (9/11, 12/12, 0/0) with three new size and radius tokens. Code change decided by Ceair: `Theme.specTrack` is now `line` instead of `Color.gray.opacity(0.2)` (`Theme.swift:31`), so the track has a repository value in both appearances. Minor bump: new tokens and components. Not built yet; the visual change needs a Debug build to confirm.
 - 1.3.0 (2026-11-27): ProjectInspector adds a selectable, wrapped "Scan Error" section with one message per line. Documentation and code only; `design/template.fig` remains at 1.2.0 by request, so its version metadata is not synchronized with this document.
+- Pending visual verification (2026-11-28): Show Completed and "No open specs." are implemented in source and model-tested. No app build or new captures were authorized in this fix. The existing template deferral remains; these inspector states are not represented in `design/template.fig`.
 
 ## Anti-patterns
 

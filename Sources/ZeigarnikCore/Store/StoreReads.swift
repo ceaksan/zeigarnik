@@ -5,8 +5,15 @@ extension Store {
     public func specSummaries(projectId: String) throws -> [SpecSummary] {
         let decoder = JSONDecoder()
         return try dbQueue.read { db in
-            try String.fetchAll(db, sql: "SELECT json FROM specEvidence WHERE projectId = ? ORDER BY specPath", arguments: [projectId])
-                .compactMap { try? decoder.decode(SpecSummary.self, from: Data($0.utf8)) }
+            try Row.fetchAll(db, sql: """
+                SELECT e.json, o.state FROM specEvidence e
+                LEFT JOIN specOverride o ON o.projectId = e.projectId AND o.specPath = e.specPath
+                WHERE e.projectId = ? ORDER BY e.specPath
+                """, arguments: [projectId]).map { row in
+                    let json: String = row["json"]
+                    let override = (row["state"] as String?).flatMap(OwnerSpecOverride.init(rawValue:))
+                    return try decoder.decode(SpecSummary.self, from: Data(json.utf8)).applyingOverride(override)
+                }
         }
     }
 
